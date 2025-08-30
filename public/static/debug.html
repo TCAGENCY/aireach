@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug AIREACH Projects</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .project { background: #f5f5f5; margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .error { color: red; background: #ffe6e6; padding: 10px; margin: 10px 0; }
+        .success { color: green; background: #e6ffe6; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug AIREACH Projects Loading</h1>
+    
+    <div id="status">Loading...</div>
+    <div id="projects"></div>
+    
+    <script>
+        async function debugProjects() {
+            const statusDiv = document.getElementById('status');
+            const projectsDiv = document.getElementById('projects');
+            
+            try {
+                statusDiv.innerHTML = '<div class="success">🔄 Calling API...</div>';
+                
+                const response = await axios.get('/api/projects');
+                console.log('API Response:', response.data);
+                
+                if (response.data.success) {
+                    const projects = response.data.data;
+                    statusDiv.innerHTML = `<div class="success">✅ API Success - ${projects.length} projects found</div>`;
+                    
+                    projectsDiv.innerHTML = projects.map(project => `
+                        <div class="project">
+                            <strong>${project.brand_name}</strong> (ID: ${project.id})
+                            <br>Industry: ${project.industry}
+                            <br>Queries: ${project.total_queries || 0}
+                            <br>Status: ${project.status}
+                        </div>
+                    `).join('');
+                } else {
+                    statusDiv.innerHTML = '<div class="error">❌ API returned error: ' + JSON.stringify(response.data) + '</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.innerHTML = '<div class="error">❌ Request failed: ' + error.message + '</div>';
+            }
+        }
+        
+        // Launch debug on page load
+        debugProjects();
+    </script>
+</body>
+</html>

@@ -5,7 +5,13 @@ class AIReachApp {
     this.currentSection = 'dashboard';
     this.projects = [];
     this.expandedProject = null; // Pour gérer l'expansion du sous-menu
-    this.init();
+    
+    // S'assurer que le DOM soit prêt avant d'initialiser
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.init());
+    } else {
+      this.init();
+    }
   }
 
   init() {
@@ -66,20 +72,30 @@ class AIReachApp {
 
   async loadProjects() {
     try {
+      console.log('🔄 Loading projects from API...');
       const response = await axios.get('/api/projects');
+      console.log('📥 API Response:', response.data);
+      
       if (response.data.success) {
         this.projects = response.data.data;
+        console.log('📊 Projects loaded from API:', this.projects);
         
         // Si aucun projet, ajouter des données de démonstration
         if (this.projects.length === 0) {
+          console.log('⚠️ No projects found, loading demo data');
           this.loadDemoData();
         } else {
+          console.log(`✅ Rendering ${this.projects.length} projects in sidebar`);
           this.renderProjectsList();
-          console.log(`📊 Loaded ${this.projects.length} projects`);
+          console.log(`📊 Successfully loaded ${this.projects.length} projects`);
         }
+      } else {
+        console.error('❌ API returned error:', response.data);
+        this.loadDemoData();
       }
     } catch (error) {
       console.error('❌ Failed to load projects:', error);
+      console.log('🔄 Loading demo data as fallback');
       // En cas d'erreur, charger les données de démonstration
       this.loadDemoData();
     }
@@ -235,9 +251,16 @@ class AIReachApp {
   }
 
   renderProjectsList() {
+    console.log('🎨 Rendering projects list...', this.projects.length);
     const projectsList = document.getElementById('projectsList');
     
+    if (!projectsList) {
+      console.error('❌ projectsList element not found in DOM!');
+      return;
+    }
+    
     if (this.projects.length === 0) {
+      console.log('⚠️ No projects to render, showing empty state');
       projectsList.innerHTML = `
         <div class="text-center py-3">
           <p class="text-sm text-gray-500">Aucun projet</p>
@@ -247,58 +270,38 @@ class AIReachApp {
       return;
     }
 
+    // Version simplifiée pour debug
     projectsList.innerHTML = this.projects.map(project => `
       <div class="project-group">
-        <!-- Élément principal du projet -->
-        <div class="project-item flex items-center p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors ${this.expandedProject === project.id ? 'bg-gray-50' : 'text-gray-700'}" 
-             data-project-id="${project.id}"
-             title="${project.brand_name} - ${project.total_queries || 0} questions, ${project.total_responses || 0} réponses">
-          <!-- Icône de projet -->
-          <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 bg-gradient-to-br from-aireach-blue to-aireach-purple">
+        <div class="project-item flex items-center p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" 
+             data-project-id="${project.id}">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 bg-gradient-to-br from-blue-600 to-purple-600">
             <span class="text-white font-medium text-xs">${project.brand_name.charAt(0)}</span>
           </div>
-          
-          <!-- Contenu du projet -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">
               <h4 class="font-medium truncate text-sm">${project.brand_name}</h4>
               <div class="flex items-center space-x-2 ml-2 flex-shrink-0">
-                <!-- Indicateur de statut -->
-                <div class="w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-green-400' : project.status === 'paused' ? 'bg-yellow-400' : 'bg-gray-400'}"></div>
-                <!-- Position moyenne si disponible -->
-                ${project.avg_position ? `
-                  <span class="text-xs font-medium ${project.avg_position <= 2 ? 'text-green-600' : project.avg_position <= 4 ? 'text-yellow-600' : 'text-red-600'}">
-                    #${Math.round(project.avg_position)}
-                  </span>
-                ` : ''}
-                <!-- Flèche d'expansion -->
-                <i class="fas fa-chevron-right text-xs text-gray-400 transition-transform ${this.expandedProject === project.id ? 'rotate-90' : ''} expand-arrow" data-project-id="${project.id}"></i>
+                <div class="w-2 h-2 rounded-full bg-green-400"></div>
+                <i class="fas fa-chevron-right text-xs text-gray-400 transition-transform expand-arrow" data-project-id="${project.id}"></i>
               </div>
             </div>
-            <p class="text-xs truncate text-gray-500">
-              ${project.total_queries || 0} questions
-            </p>
+            <p class="text-xs truncate text-gray-500">${project.total_queries || 0} questions</p>
           </div>
         </div>
         
-        <!-- Sous-menu -->
         <div class="submenu ${this.expandedProject === project.id ? '' : 'hidden'} ml-11 mt-1 space-y-1" data-project-id="${project.id}">
-          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100 transition-colors ${this.currentSection === 'project-overview' && this.currentProject?.id === project.id ? 'bg-aireach-blue text-white' : ''}" 
+          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100" 
              data-action="overview" data-project-id="${project.id}">
             <i class="fas fa-chart-pie w-3 h-3 mr-2"></i>
             <span>Overview</span>
           </a>
-          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100 transition-colors ${this.currentSection === 'suggested-prompts' && this.currentProject?.id === project.id ? 'bg-aireach-blue text-white' : ''}" 
+          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100" 
              data-action="suggested-prompts" data-project-id="${project.id}">
             <i class="fas fa-lightbulb w-3 h-3 mr-2"></i>
             <span>Suggested prompts</span>
           </a>
-          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100 transition-colors ${this.currentSection === 'competitors' && this.currentProject?.id === project.id ? 'bg-aireach-blue text-white' : ''}" 
-             data-action="competitors" data-project-id="${project.id}">
-            <i class="fas fa-users w-3 h-3 mr-2"></i>
-            <span>Competitors</span>
-          </a>
-          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100 transition-colors ${this.currentSection === 'competitors' && this.currentProject?.id === project.id ? 'bg-aireach-blue text-white' : ''}" 
+          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100" 
              data-action="competitors" data-project-id="${project.id}">
             <i class="fas fa-users w-3 h-3 mr-2"></i>
             <span>Competitors</span>
@@ -345,6 +348,8 @@ class AIReachApp {
         this.renderProjectsList(); // Re-render pour mettre à jour les états actifs
       });
     });
+    
+    console.log('✅ Projects list rendered successfully with', this.projects.length, 'projects');
   }
 
   selectProject(projectId) {
