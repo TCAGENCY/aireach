@@ -31,9 +31,9 @@ class AIReachApp {
       document.getElementById('sidebarOverlay').classList.add('hidden');
     });
 
-    // New Project Modal
+    // New Project Modal - Processus 4 étapes
     document.getElementById('newProjectBtn').addEventListener('click', () => {
-      document.getElementById('newProjectModal').classList.remove('hidden');
+      this.showCreateProjectWizard();
     });
 
     document.getElementById('closeNewProjectModal').addEventListener('click', () => {
@@ -44,7 +44,7 @@ class AIReachApp {
       document.getElementById('newProjectModal').classList.add('hidden');
     });
 
-    // New Project Form
+    // New Project Form (legacy - sera remplacé par le wizard)
     document.getElementById('newProjectForm').addEventListener('submit', (e) => {
       e.preventDefault();
       this.createProject();
@@ -325,7 +325,12 @@ class AIReachApp {
 
     // Add event listener for quick new project
     document.getElementById('quickNewProject')?.addEventListener('click', () => {
-      document.getElementById('newProjectModal').classList.remove('hidden');
+      this.showCreateProjectWizard();
+    });
+
+    // Add event listener for empty state new project
+    document.getElementById('emptyStateNewProject')?.addEventListener('click', () => {
+      this.showCreateProjectWizard();
     });
   }
 
@@ -800,6 +805,508 @@ class AIReachApp {
     setTimeout(() => {
       notification.remove();
     }, 3000);
+  }
+
+  // ===== WIZARD DE CRÉATION DE PROJET EN 4 ÉTAPES =====
+
+  showCreateProjectWizard() {
+    this.wizardData = {
+      step: 1,
+      domain: '',
+      brandInfo: null,
+      selectedQuestions: [],
+      questionsWithVolumes: []
+    };
+
+    this.renderWizardStep1();
+  }
+
+  // Étape 1: Saisie du domaine
+  renderWizardStep1() {
+    const modal = document.getElementById('newProjectModal');
+    const content = modal.querySelector('.bg-white');
+    
+    content.innerHTML = `
+      <div class="p-6">
+        <!-- Header avec étapes -->
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">Nouveau Projet</h3>
+          <button id="closeWizard" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Indicateur d'étapes -->
+        <div class="flex items-center justify-center mb-8">
+          <div class="flex items-center">
+            <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">1</div>
+            <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">2</div>
+            <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">3</div>
+            <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">4</div>
+          </div>
+        </div>
+
+        <!-- Contenu Étape 1 -->
+        <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Saisir le Domaine</h2>
+          <p class="text-gray-600">Veuillez saisir le domaine de la marque que vous souhaitez surveiller.</p>
+        </div>
+
+        <div class="space-y-6">
+          <div>
+            <label for="wizardDomain" class="block text-sm font-medium text-gray-700 mb-2">Domaine:</label>
+            <input 
+              type="text" 
+              id="wizardDomain" 
+              placeholder="example.com" 
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent text-lg"
+              value="${this.wizardData.domain}"
+            >
+          </div>
+
+          <div class="flex justify-center">
+            <button 
+              id="wizardStep1Next" 
+              class="bg-aireach-blue text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-semibold"
+              ${!this.wizardData.domain ? 'disabled' : ''}
+            >
+              Suivant
+            </button>
+          </div>
+
+          <div class="text-center">
+            <p class="text-sm text-gray-500 mb-2">
+              Vous voulez saisir un nom de marque au lieu d'un domaine ? 
+              <button id="switchToBrandName" class="text-aireach-blue hover:underline">Cliquez ici !</button>
+            </p>
+            <p class="text-xs text-gray-400">
+              Veuillez noter que la collecte de données commence seulement après la configuration du projet. 
+              Les données historiques ne sont pas disponibles en raison des limitations des chatbots IA.
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove('hidden');
+
+    // Event listeners
+    document.getElementById('closeWizard').addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    const domainInput = document.getElementById('wizardDomain');
+    const nextBtn = document.getElementById('wizardStep1Next');
+
+    domainInput.addEventListener('input', (e) => {
+      this.wizardData.domain = e.target.value.trim();
+      nextBtn.disabled = !this.wizardData.domain;
+      nextBtn.className = this.wizardData.domain 
+        ? 'bg-aireach-blue text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-semibold'
+        : 'bg-gray-300 text-gray-500 px-8 py-3 rounded-lg font-semibold cursor-not-allowed';
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (this.wizardData.domain) {
+        this.processStep1();
+      }
+    });
+
+    document.getElementById('switchToBrandName')?.addEventListener('click', () => {
+      this.showBrandNameInput();
+    });
+  }
+
+  // Traitement étape 1: Détection de marque
+  async processStep1() {
+    if (!this.wizardData.domain) return;
+
+    try {
+      // Afficher le loading
+      document.getElementById('wizardStep1Next').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Détection...';
+      
+      const response = await axios.post('/api/brand/detect', {
+        domain: this.wizardData.domain
+      });
+
+      if (response.data.success) {
+        this.wizardData.brandInfo = response.data.data;
+        this.wizardData.step = 2;
+        this.renderWizardStep2();
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Brand detection failed:', error);
+      this.showError('Échec de la détection de marque');
+      document.getElementById('wizardStep1Next').innerHTML = 'Suivant';
+    }
+  }
+
+  // Étape 2: Sélection des questions
+  async renderWizardStep2() {
+    try {
+      // Générer les questions
+      const response = await axios.post('/api/questions/generate', {
+        brandName: this.wizardData.brandInfo.detectedBrandName,
+        industry: this.wizardData.brandInfo.industry,
+        domain: this.wizardData.domain
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error);
+      }
+
+      const questionsData = response.data.data;
+      this.wizardData.availableQuestions = questionsData.questions;
+      this.wizardData.selectedQuestions = questionsData.questions.filter(q => q.isSelected);
+
+      const modal = document.getElementById('newProjectModal');
+      const content = modal.querySelector('.bg-white');
+      
+      content.innerHTML = `
+        <div class="p-6">
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-gray-900">Nouveau Projet</h3>
+            <button id="closeWizard" class="text-gray-400 hover:text-gray-600">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- Indicateur d'étapes -->
+          <div class="flex items-center justify-center mb-8">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+              <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+              <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">2</div>
+              <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+              <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">3</div>
+              <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+              <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">4</div>
+            </div>
+          </div>
+
+          <!-- Info marque détectée -->
+          <div class="bg-blue-50 p-4 rounded-lg mb-6">
+            <div class="flex items-center">
+              <i class="fas fa-check-circle text-green-500 mr-2"></i>
+              <div>
+                <p class="font-semibold text-gray-900">Nom de marque détecté:</p>
+                <p class="text-aireach-blue font-bold text-lg">${this.wizardData.brandInfo.detectedBrandName}</p>
+                <p class="text-sm text-gray-600">Industrie: ${this.wizardData.brandInfo.industry}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Limite -->
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900">Choisir/Ajouter des questions</h2>
+            <span class="text-sm text-gray-500">
+              Limites actuelles: <span id="selectedCount">${this.wizardData.selectedQuestions.length}</span> / 20
+            </span>
+          </div>
+
+          <!-- Liste des questions -->
+          <div class="space-y-3 max-h-96 overflow-y-auto mb-6" id="questionsList">
+            ${this.renderQuestionsList()}
+          </div>
+
+          <!-- Boutons -->
+          <div class="flex justify-between">
+            <button id="wizardStep2Back" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              Retour
+            </button>
+            <button 
+              id="wizardStep2Next" 
+              class="bg-aireach-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              ${this.wizardData.selectedQuestions.length === 0 ? 'disabled' : ''}
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Event listeners
+      this.setupStep2Listeners();
+
+    } catch (error) {
+      console.error('Question generation failed:', error);
+      this.showError('Échec de la génération des questions');
+    }
+  }
+
+  renderQuestionsList() {
+    return this.wizardData.availableQuestions.map(q => `
+      <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+        <input 
+          type="checkbox" 
+          id="q_${q.id}" 
+          class="question-checkbox h-4 w-4 text-aireach-blue border-gray-300 rounded focus:ring-aireach-blue mr-3"
+          ${q.isSelected ? 'checked' : ''}
+          data-question-id="${q.id}"
+        >
+        <label for="q_${q.id}" class="flex-1 text-gray-900 cursor-pointer">
+          ${q.text}
+        </label>
+        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+          ${q.category}
+        </span>
+      </div>
+    `).join('');
+  }
+
+  setupStep2Listeners() {
+    // Close wizard
+    document.getElementById('closeWizard').addEventListener('click', () => {
+      document.getElementById('newProjectModal').classList.add('hidden');
+    });
+
+    // Back button
+    document.getElementById('wizardStep2Back').addEventListener('click', () => {
+      this.wizardData.step = 1;
+      this.renderWizardStep1();
+    });
+
+    // Checkbox handlers
+    document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const questionId = e.target.getAttribute('data-question-id');
+        const question = this.wizardData.availableQuestions.find(q => q.id === questionId);
+        
+        if (question) {
+          question.isSelected = e.target.checked;
+          this.wizardData.selectedQuestions = this.wizardData.availableQuestions.filter(q => q.isSelected);
+          
+          // Update counter
+          document.getElementById('selectedCount').textContent = this.wizardData.selectedQuestions.length;
+          
+          // Update next button
+          const nextBtn = document.getElementById('wizardStep2Next');
+          nextBtn.disabled = this.wizardData.selectedQuestions.length === 0;
+          nextBtn.className = this.wizardData.selectedQuestions.length > 0
+            ? 'bg-aireach-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700'
+            : 'bg-gray-300 text-gray-500 px-6 py-2 rounded-lg cursor-not-allowed';
+        }
+      });
+    });
+
+    // Next button
+    document.getElementById('wizardStep2Next').addEventListener('click', () => {
+      if (this.wizardData.selectedQuestions.length > 0) {
+        this.processStep2();
+      }
+    });
+  }
+
+  // Traitement étape 2: Obtenir les volumes de recherche
+  async processStep2() {
+    try {
+      document.getElementById('wizardStep2Next').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Chargement...';
+      
+      const response = await axios.post('/api/questions/volumes', {
+        questions: this.wizardData.selectedQuestions
+      });
+
+      if (response.data.success) {
+        this.wizardData.questionsWithVolumes = response.data.data.questions;
+        this.wizardData.step = 3;
+        this.renderWizardStep3();
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Volume fetching failed:', error);
+      this.showError('Échec de la récupération des volumes');
+      document.getElementById('wizardStep2Next').innerHTML = 'Suivant';
+    }
+  }
+
+  // Étape 3: Affichage des volumes de recherche
+  renderWizardStep3() {
+    const modal = document.getElementById('newProjectModal');
+    const content = modal.querySelector('.bg-white');
+    
+    content.innerHTML = `
+      <div class="p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">Nouveau Projet</h3>
+          <button id="closeWizard" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Indicateur d'étapes -->
+        <div class="flex items-center justify-center mb-8">
+          <div class="flex items-center">
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+            <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">3</div>
+            <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">4</div>
+          </div>
+        </div>
+
+        <!-- Titre -->
+        <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Volume de Recherche</h2>
+          <p class="text-gray-600">Volumes de recherche pour les questions sélectionnées</p>
+        </div>
+
+        <!-- Tableau des questions avec volumes -->
+        <div class="bg-white border border-gray-200 rounded-lg mb-6">
+          <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-900">
+            <div>Question:</div>
+            <div>Volume de Recherche:</div>
+          </div>
+          <div class="max-h-80 overflow-y-auto">
+            ${this.wizardData.questionsWithVolumes.map(q => `
+              <div class="grid grid-cols-2 gap-4 p-4 border-b border-gray-100 last:border-b-0">
+                <div class="text-gray-900">${q.text}</div>
+                <div class="font-bold ${q.searchVolume >= 1000 ? 'text-green-600' : q.searchVolume >= 100 ? 'text-yellow-600' : 'text-gray-600'}">
+                  ${q.searchVolume >= 100 ? q.searchVolume.toLocaleString() : '<100'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Boutons -->
+        <div class="flex justify-between">
+          <button id="wizardStep3Back" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            Retour
+          </button>
+          <button id="wizardStep3Next" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold">
+            Enregistrer & Lancer
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.setupStep3Listeners();
+  }
+
+  setupStep3Listeners() {
+    document.getElementById('closeWizard').addEventListener('click', () => {
+      document.getElementById('newProjectModal').classList.add('hidden');
+    });
+
+    document.getElementById('wizardStep3Back').addEventListener('click', () => {
+      this.wizardData.step = 2;
+      this.renderWizardStep2();
+    });
+
+    document.getElementById('wizardStep3Next').addEventListener('click', () => {
+      this.processStep3();
+    });
+  }
+
+  // Traitement étape 3: Créer le projet
+  async processStep3() {
+    try {
+      document.getElementById('wizardStep3Next').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Création...';
+      
+      // Passer à l'étape 4 (loading)
+      this.renderWizardStep4();
+
+      // Créer le projet
+      const response = await axios.post('/api/projects/create-complete', {
+        domain: this.wizardData.domain,
+        brandName: this.wizardData.brandInfo.detectedBrandName,
+        industry: this.wizardData.brandInfo.industry,
+        questions: this.wizardData.questionsWithVolumes,
+        websiteUrl: this.wizardData.brandInfo.domain
+      });
+
+      if (response.data.success) {
+        // Attendre un peu pour l'effet visuel
+        setTimeout(() => {
+          // Fermer le modal
+          document.getElementById('newProjectModal').classList.add('hidden');
+          
+          // Recharger les projets
+          this.loadProjects();
+          
+          // Sélectionner le nouveau projet
+          this.selectProject(response.data.data.project.id);
+          
+          this.showSuccess(`✅ Projet "${response.data.data.project.brand_name}" créé avec succès !`);
+        }, 2000);
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Project creation failed:', error);
+      this.showError('Échec de la création du projet');
+      this.renderWizardStep3(); // Retour à l'étape 3
+    }
+  }
+
+  // Étape 4: Loading et finalisation
+  renderWizardStep4() {
+    const modal = document.getElementById('newProjectModal');
+    const content = modal.querySelector('.bg-white');
+    
+    content.innerHTML = `
+      <div class="p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">Nouveau Projet</h3>
+          <button id="closeWizard" class="text-gray-400 hover:text-gray-600 opacity-50 cursor-not-allowed" disabled>
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Indicateur d'étapes -->
+        <div class="flex items-center justify-center mb-8">
+          <div class="flex items-center">
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+            <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">4</div>
+          </div>
+        </div>
+
+        <!-- Loading état -->
+        <div class="text-center py-12">
+          <div class="loading-spinner w-16 h-16 border-4 border-aireach-blue border-t-transparent rounded-full mx-auto mb-6"></div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Chargement des données</h2>
+          <p class="text-gray-600 mb-4">Cela peut prendre un moment...</p>
+          
+          <div class="bg-gray-50 rounded-lg p-6 mt-8">
+            <div class="text-sm text-gray-700 space-y-2">
+              <div class="flex items-center justify-between">
+                <span>Création du projet...</span>
+                <i class="fas fa-check text-green-500"></i>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Configuration des questions...</span>
+                <i class="fas fa-check text-green-500"></i>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Initialisation de la surveillance...</span>
+                <div class="loading-spinner w-4 h-4 border-2 border-aireach-blue border-t-transparent rounded-full"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  showBrandNameInput() {
+    // TODO: Implémenter la saisie par nom de marque au lieu du domaine
+    this.showNotification('Fonctionnalité à venir', 'info');
   }
 
   // Configuration des handlers de collecte

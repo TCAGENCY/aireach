@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
 import { DataCollectionService } from './services/data-collector'
 import { AI_PLATFORMS } from './services/ai-platforms'
+import { BrandDetectionService, QuestionGenerationService } from './services/brand-detection'
 
 // Types pour les bindings Cloudflare
 type Bindings = {
@@ -365,6 +366,175 @@ app.get('/api/projects/:id/collection-status', async (c) => {
     return c.json({ 
       success: false, 
       error: 'Failed to fetch collection status' 
+    }, 500)
+  }
+})
+
+// ===== APIs pour le processus de création de projet en 4 étapes =====
+
+// Étape 1: Détecter la marque à partir du domaine
+app.post('/api/brand/detect', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { domain } = body
+    
+    if (!domain) {
+      return c.json({ 
+        success: false, 
+        error: 'Domain is required' 
+      }, 400)
+    }
+
+    const brandService = new BrandDetectionService()
+    const result = await brandService.detectBrandFromDomain(domain)
+
+    return c.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to detect brand' 
+    }, 500)
+  }
+})
+
+// Étape 2: Générer des questions suggérées
+app.post('/api/questions/generate', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { brandName, industry, domain } = body
+    
+    if (!brandName || !industry) {
+      return c.json({ 
+        success: false, 
+        error: 'Brand name and industry are required' 
+      }, 400)
+    }
+
+    const questionService = new QuestionGenerationService()
+    const questions = await questionService.generateQuestions(brandName, industry, domain)
+
+    return c.json({
+      success: true,
+      data: {
+        questions,
+        limit: 20,
+        selected: questions.filter(q => q.isSelected).length
+      }
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to generate questions' 
+    }, 500)
+  }
+})
+
+// Étape 3: Obtenir des questions avec volumes de recherche
+app.post('/api/questions/volumes', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { questions } = body
+    
+    if (!Array.isArray(questions)) {
+      return c.json({ 
+        success: false, 
+        error: 'Questions array is required' 
+      }, 400)
+    }
+
+    // Simuler les volumes de recherche pour les questions sélectionnées
+    const questionsWithVolumes = questions.map(q => ({
+      text: q.text || q,
+      searchVolume: q.searchVolume || Math.floor(Math.random() * 2000),
+      category: q.category || 'general'
+    }))
+
+    return c.json({
+      success: true,
+      data: {
+        questions: questionsWithVolumes
+      }
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to get search volumes' 
+    }, 500)
+  }
+})
+
+// Étape 4: Créer le projet complet avec questions
+app.post('/api/projects/create-complete', async (c) => {
+  try {
+    const { env } = c
+    const body = await c.req.json()
+    const { domain, brandName, industry, questions, websiteUrl } = body
+    
+    if (!domain || !brandName || !questions || !Array.isArray(questions)) {
+      return c.json({ 
+        success: false, 
+        error: 'Domain, brand name, and questions are required' 
+      }, 400)
+    }
+
+    // Créer le projet
+    const projectResult = await env.DB.prepare(`
+      INSERT INTO projects (name, brand_name, description, industry, website_url, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      `${brandName} Monitoring`,
+      brandName,
+      `Surveillance IA pour ${brandName} dans le secteur ${industry}`,
+      industry,
+      websiteUrl || domain,
+      'active'
+    ).run()
+
+    const projectId = projectResult.meta.last_row_id
+
+    // Ajouter les questions sélectionnées
+    for (const [index, question] of questions.entries()) {
+      await env.DB.prepare(`
+        INSERT INTO tracked_queries (project_id, query_text, query_type, priority, is_active)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(
+        projectId,
+        question.text || question,
+        'brand_mention',
+        index < 10 ? 1 : 2, // Priorité élevée pour les 10 premières
+        true
+      ).run()
+    }
+
+    // Récupérer le projet créé avec ses métriques
+    const project = await env.DB.prepare(`
+      SELECT 
+        p.*,
+        COUNT(DISTINCT tq.id) as total_queries,
+        0 as total_responses,
+        NULL as avg_position,
+        NULL as avg_sentiment
+      FROM projects p
+      LEFT JOIN tracked_queries tq ON p.id = tq.project_id AND tq.is_active = TRUE
+      WHERE p.id = ?
+      GROUP BY p.id
+    `).bind(projectId).first()
+
+    return c.json({
+      success: true,
+      data: {
+        project,
+        message: `Projet ${brandName} créé avec ${questions.length} questions`
+      }
+    })
+  } catch (error) {
+    console.error('Failed to create complete project:', error)
+    return c.json({ 
+      success: false, 
+      error: 'Failed to create project' 
     }, 500)
   }
 })
