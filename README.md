@@ -12,7 +12,7 @@
 
 ### ✅ Fonctionnalités Implémentées
 - **Dashboard principal** avec métriques de vue d'ensemble
-- **🎯 Wizard de création** de projet en 4 étapes avec détection intelligente
+- **🎯 Wizard de création** de projet en 5 étapes avec détection intelligente
 - **🚀 Collecte automatisée** des données IA avec simulation réaliste
 - **🚀 Intégration complète** des plateformes IA (6+ services)
 - **🚀 Parseur intelligent** pour analyse des mentions de marques
@@ -21,6 +21,10 @@
 - **🎯 Détection automatique** de marque et industrie depuis domaine
 - **🎯 Génération intelligente** de questions par industrie et marque
 - **🎯 Volumes de recherche** simulés avec distribution réaliste
+- **👥 Page Competitors** avec analyse concurrentielle complète
+- **📊 All Projects** avec gestion globale et filtrage avancé
+- **📈 Overview détaillé** par projet avec métriques et graphiques
+- **🌍 Support multi-langues** (FR, EN, AR, ES, DE, IT) et pays
 - **Base de données complète** avec schéma pour surveillance IA
 - **Interface utilisateur responsive** avec sidebar de navigation
 - **API RESTful** pour la gestion des données
@@ -45,12 +49,12 @@
 
 ### 🔧 Fonctionnalités en Développement
 - **Analyse de sentiment** avancée des mentions (v1 implémentée)
-- **Alertes intelligentes** basées sur les tendances
-- **Comparaison concurrentielle** détaillée
+- **Alertes intelligentes** basées sur les tendances  
 - **Recommandations d'optimisation** GAO (Generative AI Optimization)
 - **Intégrations API réelles** avec les plateformes IA (simulation disponible)
 - **Rapports PDF** exportables
 - **Système d'abonnement** et facturation
+- **Export concurrentiels** et programmation d'analyses
 
 ## 🤖 Système de Collecte Automatisée
 
@@ -109,16 +113,25 @@
 - Métriques globales (projets, réponses, plateformes, alertes)
 - Actions rapides pour créer nouveaux projets
 
-### 2. 🎯 Création de Projet (NOUVEAU - 4 Étapes)
+### 2. 🎯 Création de Projet (NOUVEAU - 5 Étapes)
 - **Étape 1** : Saisie du domaine avec détection automatique de la marque
 - **Étape 2** : Sélection de 10-20 questions parmi suggestions intelligentes
-- **Étape 3** : Visualisation des volumes de recherche par question
-- **Étape 4** : Finalisation automatique avec loading et lancement
+- **Étape 3** : **NOUVEAU** - Sélection langue et pays pour questions localisées  
+- **Étape 4** : Visualisation des volumes de recherche par question
+- **Étape 5** : Finalisation automatique avec loading et lancement
 - **Accès** : Bouton "+" à côté de "Projets" ou "Créer un projet" dans le dashboard
 
 ### 3. Gestion des Projets
 - **Sélectionner un projet** : Cliquer sur un projet dans la sidebar
-- **Voir détails** : Dashboard spécifique avec métriques détaillées
+- **Sous-menu projet** :
+  - **Overview** : Dashboard spécifique avec métriques détaillées et graphiques
+  - **Suggested Prompts** : Questions intelligentes générées pour le projet
+  - **👥 Competitors** : **NOUVEAU** - Analyse concurrentielle complète avec :
+    - Identification automatique des concurrents par industrie
+    - Tableau comparatif avec Brand Score, positions, mentions
+    - Graphiques de performance comparative et part de marché
+    - Insights concurrentiels et opportunités d'amélioration
+    - Actions de génération de rapports et export de données
 
 ### 3. 🚀 Collecte Automatisée (NOUVEAU)
 - **Collecte manuelle** : Bouton "Collecter Maintenant" dans le dashboard projet
@@ -127,8 +140,8 @@
 - **Status** : Visualisation des dernières collectes
 
 ### 4. Navigation
-- **Projets** : Liste des projets de surveillance
-- **All Projects** : Vue globale de tous les projets
+- **Projets** : Liste des projets de surveillance avec sous-menus
+- **All Projects** : Vue globale avec filtrage, recherche et gestion en lot
 - **Prompts/Questions** : Gestion des requêtes surveillées
 - **Subscription** : Gestion de l'abonnement
 - **FAQ** : Questions fréquemment posées
@@ -283,12 +296,32 @@ curl -X POST http://localhost:3000/api/projects/1/schedule \
 - **Collecte IA** : ✅ Opérationnelle avec 6 plateformes actives
 - **Tech Stack** : Hono + D1 + TypeScript + Tailwind + Chart.js
 - **Performance** : 24/32 collectes réussies (75% succès)
-- **Version** : v3.0 - Wizard de Création Intelligent + Collecte IA
+- **Version** : v4.0 - Analyse Concurrentielle + Gestion Multi-Projets
 - **Dernière mise à jour** : 30 août 2025
 
 ---
 
-💡 **AIREACH v3.0** combine maintenant un wizard intelligent de création de projets en 4 étapes avec un système complet de collecte automatisée des données IA. Détection automatique de marque, suggestions intelligentes de questions et collecte temps réel vous donnent des insights exploitables pour optimiser votre présence dans l'écosystème IA.
+💡 **AIREACH v4.0** combine maintenant un wizard intelligent de création de projets en 5 étapes avec analyse concurrentielle complète et gestion multi-projets avancée. Détection automatique de marque, questions multi-langues localisées, comparaison concurrentielle avec insights, et collecte temps réel vous donnent une vue 360° pour optimiser votre présence dans l'écosystème IA.
+
+## 👥 Fonctionnalités Concurrentielles (v4.0)
+
+### 🎯 Analyse Concurrentielle Intelligente
+- **Identification automatique** des concurrents par industrie (Wine, Tech, Fashion, etc.)
+- **Données comparatives** : Brand Score, positions moyennes, share of voice, mentions
+- **Métriques de performance** avec tendances et position dans le marché
+- **Insights stratégiques** : opportunités et menaces identifiées automatiquement
+
+### 📊 Visualisations Concurrentielles
+- **Graphique de comparaison** : Brand Score de votre marque vs concurrents
+- **Part de marché IA** : Distribution en camembert des mentions dans l'écosystème IA
+- **Tableau comparatif** : Vue détaillée sortable avec toutes les métriques
+- **Opportunities Dashboard** : Actions recommandées avec niveau d'impact
+
+### 🚀 Actions Concurrentielles
+- **Génération de rapports** concurrentiels automatique
+- **Export des données** pour analyses externes
+- **Programmation d'analyses** périodiques
+- **Alertes concurrentielles** sur les changements significatifs
 
 ### 🎯 Test du Processus Complet
 ```bash
