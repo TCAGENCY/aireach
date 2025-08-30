@@ -12,9 +12,9 @@ class AIReachApp {
     console.log('🚀 AIREACH Application Starting...');
     this.setupEventListeners();
     this.loadProjects();
-    // Afficher la page Suggested Prompts de Nicolas au démarrage
+    // Afficher le dashboard au démarrage
     setTimeout(() => {
-      this.showNicolasSuggestedPrompts();
+      this.showDashboard();
     }, 500); // Petit délai pour laisser le temps aux projets de se charger
   }
 
