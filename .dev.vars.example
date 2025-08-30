@@ -1,0 +1,12 @@
+# Variables d'environnement pour le développement local
+# Copier ce fichier vers .dev.vars et remplir les vraies clés API
+
+# Clés API pour l'analyse concurrentielle IA
+OPENAI_API_KEY=sk-your-openai-key-here
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+
+# Configuration Cloudflare (pour la production)
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
+
+# Base de données (automatiquement gérée par Wrangler en local)
+# DB=webapp-production (géré automatiquement)
