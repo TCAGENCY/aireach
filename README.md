@@ -12,12 +12,15 @@
 
 ### ✅ Fonctionnalités Implémentées
 - **Dashboard principal** avec métriques de vue d'ensemble
-- **Gestion des projets** (création, visualisation, sélection)
+- **🎯 Wizard de création** de projet en 4 étapes avec détection intelligente
 - **🚀 Collecte automatisée** des données IA avec simulation réaliste
 - **🚀 Intégration complète** des plateformes IA (6+ services)
 - **🚀 Parseur intelligent** pour analyse des mentions de marques
 - **🚀 Calcul automatique** des métriques (position, sentiment, exactitude)
 - **🚀 Interface de collecte** avec boutons et progression en temps réel
+- **🎯 Détection automatique** de marque et industrie depuis domaine
+- **🎯 Génération intelligente** de questions par industrie et marque
+- **🎯 Volumes de recherche** simulés avec distribution réaliste
 - **Base de données complète** avec schéma pour surveillance IA
 - **Interface utilisateur responsive** avec sidebar de navigation
 - **API RESTful** pour la gestion des données
@@ -35,6 +38,10 @@
 - **🚀 NEW:** `POST /api/projects/:id/schedule` - Programmer la collecte automatique
 - **🚀 NEW:** `GET /api/projects/:id/collection-status` - Status de collecte
 - **🚀 NEW:** `POST /api/config/api-keys` - Configuration des clés API
+- **🎯 NEW:** `POST /api/brand/detect` - Détection de marque depuis domaine
+- **🎯 NEW:** `POST /api/questions/generate` - Génération de questions intelligente
+- **🎯 NEW:** `POST /api/questions/volumes` - Volumes de recherche par question
+- **🎯 NEW:** `POST /api/projects/create-complete` - Création complète de projet
 
 ### 🔧 Fonctionnalités en Développement
 - **Analyse de sentiment** avancée des mentions (v1 implémentée)
@@ -102,8 +109,14 @@
 - Métriques globales (projets, réponses, plateformes, alertes)
 - Actions rapides pour créer nouveaux projets
 
-### 2. Gestion des Projets
-- **Créer un projet** : Cliquer sur "+" à côté de "Projets"
+### 2. 🎯 Création de Projet (NOUVEAU - 4 Étapes)
+- **Étape 1** : Saisie du domaine avec détection automatique de la marque
+- **Étape 2** : Sélection de 10-20 questions parmi suggestions intelligentes
+- **Étape 3** : Visualisation des volumes de recherche par question
+- **Étape 4** : Finalisation automatique avec loading et lancement
+- **Accès** : Bouton "+" à côté de "Projets" ou "Créer un projet" dans le dashboard
+
+### 3. Gestion des Projets
 - **Sélectionner un projet** : Cliquer sur un projet dans la sidebar
 - **Voir détails** : Dashboard spécifique avec métriques détaillées
 
@@ -216,21 +229,41 @@ curl -X POST http://localhost:3000/api/projects/1/schedule \
 - **Content gap analysis** automatique
 - **Competitive intelligence** en temps réel
 
-## 🚀 Nouvelles Fonctionnalités v2.0
+## 🎯 Nouvelles Fonctionnalités v3.0
 
-### ✨ Collecte Automatisée
+### ✨ Wizard de Création Intelligent  
+- **Détection automatique** de marque et industrie depuis domaine
+- **4 étapes guidées** avec validation en temps réel
+- **Interface step-by-step** avec indicateurs visuels d'avancement
+- **Questions pré-sélectionnées** basées sur l'industrie détectée
+
+### 🧠 Intelligence Artificielle de Suggestion
+- **20+ templates** de questions par industrie (Tech, Food & Beverage, E-commerce...)
+- **Questions contextuelles** spécifiques au domaine (.ma → questions Maroc)
+- **Questions marque** personnalisées (reviews, comparaisons, pricing)
+- **Volumes de recherche** simulés avec distribution réaliste (60% <100, 20% med, 20% high)
+
+### 📊 Expérience Utilisateur Avancée
+- **Validation interactive** avec boutons intelligents activés/désactivés
+- **Gestion d'état complexe** avec wizardData pour persistance entre étapes
+- **Loading states** avec spinners et progression animée
+- **Intégration transparente** avec le système de collecte existant
+
+### 🚀 Fonctionnalités v2.0 (Précédentes)
+
+#### ✨ Collecte Automatisée
 - **Service modulaire** avec factory pattern pour plateformes IA
 - **Simulation réaliste** avec données cohérentes par marque/industrie  
 - **Parseur intelligent** détectant mentions, sentiment, position
 - **Interface intuitive** avec progression temps réel
 
-### 📊 Métriques Avancées
+#### 📊 Métriques Avancées
 - **Calcul automatique** de 5+ métriques par réponse
 - **Analyse contextuelle** avec extraction d'insights
 - **Détection concurrents** automatique dans les réponses
 - **Scoring multi-dimensionnel** (exactitude, sentiment, position)
 
-### 🔧 Infrastructure Robuste
+#### 🔧 Infrastructure Robuste
 - **Architecture modulaire** facilement extensible
 - **Gestion d'erreurs** complète avec fallbacks
 - **Rate limiting** respect des limites par plateforme
@@ -250,9 +283,30 @@ curl -X POST http://localhost:3000/api/projects/1/schedule \
 - **Collecte IA** : ✅ Opérationnelle avec 6 plateformes actives
 - **Tech Stack** : Hono + D1 + TypeScript + Tailwind + Chart.js
 - **Performance** : 24/32 collectes réussies (75% succès)
-- **Version** : v2.0 - Collecte Automatisée IA
+- **Version** : v3.0 - Wizard de Création Intelligent + Collecte IA
 - **Dernière mise à jour** : 30 août 2025
 
 ---
 
-💡 **AIREACH v2.0** vous permet maintenant de collecter automatiquement les données de surveillance IA avec un système intelligent d'analyse des mentions, vous donnant des insights exploitables en temps réel pour optimiser votre présence dans l'écosystème IA.
+💡 **AIREACH v3.0** combine maintenant un wizard intelligent de création de projets en 4 étapes avec un système complet de collecte automatisée des données IA. Détection automatique de marque, suggestions intelligentes de questions et collecte temps réel vous donnent des insights exploitables pour optimiser votre présence dans l'écosystème IA.
+
+### 🎯 Test du Processus Complet
+```bash
+# 1. Détecter marque depuis domaine
+curl -X POST http://localhost:3000/api/brand/detect \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "cavevins.ma"}'
+# → Détecte "Cavevins" dans "Food & Beverage" ✅
+
+# 2. Générer questions intelligentes  
+curl -X POST http://localhost:3000/api/questions/generate \
+  -H "Content-Type: application/json" \
+  -d '{"brandName": "Cavevins", "industry": "Food & Beverage", "domain": "cavevins.ma"}'
+# → 16 questions dont "Where to buy Moroccan wine?" (spéc. .ma) ✅
+
+# 3. Créer projet complet avec collecte
+curl -X POST http://localhost:3000/api/projects/create-complete \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "cavevins.ma", "brandName": "Cavevins", "industry": "Food & Beverage", "questions": [...]}'
+# → Projet créé + 5 questions + prêt pour collecte ✅
+```
