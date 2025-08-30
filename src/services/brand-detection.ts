@@ -3,10 +3,14 @@ export interface BrandDetectionResult {
   domain: string
   detectedBrandName: string
   industry: string
+  country: string
+  language: string
   confidence: number
   suggestions: {
     brandNames: string[]
     industries: string[]
+    countries: string[]
+    languages: string[]
   }
 }
 
@@ -33,14 +37,21 @@ export class BrandDetectionService {
     // Détecter l'industrie
     const industry = await this.detectIndustry(cleanDomain)
     
+    // Détecter le pays et la langue
+    const geoInfo = this.detectCountryAndLanguage(cleanDomain)
+    
     return {
       domain: cleanDomain,
       detectedBrandName: detectedBrand,
       industry: industry.name,
+      country: geoInfo.country,
+      language: geoInfo.language,
       confidence: 0.85,
       suggestions: {
         brandNames: this.generateBrandNameSuggestions(detectedBrand),
-        industries: industry.suggestions
+        industries: industry.suggestions,
+        countries: geoInfo.countrySuggestions,
+        languages: geoInfo.languageSuggestions
       }
     }
   }
@@ -112,6 +123,55 @@ export class BrandDetectionService {
     }
   }
 
+  // Détecter le pays et la langue basés sur l'extension de domaine
+  private detectCountryAndLanguage(domain: string): {
+    country: string
+    language: string
+    countrySuggestions: string[]
+    languageSuggestions: string[]
+  } {
+    // Mapping des extensions de domaine vers pays et langue
+    const domainToCountry = {
+      '.ma': { country: 'Morocco', language: 'French' },
+      '.fr': { country: 'France', language: 'French' },
+      '.com': { country: 'United States', language: 'English' },
+      '.uk': { country: 'United Kingdom', language: 'English' },
+      '.de': { country: 'Germany', language: 'German' },
+      '.es': { country: 'Spain', language: 'Spanish' },
+      '.it': { country: 'Italy', language: 'Italian' },
+      '.be': { country: 'Belgium', language: 'French' },
+      '.ch': { country: 'Switzerland', language: 'French' },
+      '.ca': { country: 'Canada', language: 'English' },
+      '.au': { country: 'Australia', language: 'English' }
+    }
+
+    // Détecter l'extension
+    const extension = domain.includes('.') ? '.' + domain.split('.').pop() : ''
+    const detected = domainToCountry[extension as keyof typeof domainToCountry]
+    
+    // Détections spéciales basées sur le contenu du domaine
+    let detectedCountry = detected?.country || 'United States'
+    let detectedLanguage = detected?.language || 'English'
+    
+    // Cas spéciaux pour le Maroc
+    if (domain.includes('.ma') || domain.includes('maroc') || domain.includes('morocco')) {
+      detectedCountry = 'Morocco'
+      detectedLanguage = 'French' // Par défaut français pour le Maroc (business)
+    }
+
+    return {
+      country: detectedCountry,
+      language: detectedLanguage,
+      countrySuggestions: [
+        'Morocco', 'France', 'United States', 'United Kingdom', 
+        'Canada', 'Germany', 'Spain', 'Italy', 'Belgium', 'Switzerland'
+      ],
+      languageSuggestions: [
+        'French', 'English', 'Arabic', 'Spanish', 'German', 'Italian'
+      ]
+    }
+  }
+
   // Générer des suggestions de noms de marque
   private generateBrandNameSuggestions(baseName: string): string[] {
     return [
@@ -127,10 +187,24 @@ export class BrandDetectionService {
 // Service de génération de questions
 export class QuestionGenerationService {
   
-  // Générer des questions suggérées basées sur la marque et l'industrie
-  async generateQuestions(brandName: string, industry: string, domain: string): Promise<QuestionSuggestion[]> {
-    const baseQuestions = this.getBaseQuestionTemplates(industry)
-    const brandSpecificQuestions = this.generateBrandSpecificQuestions(brandName, industry, domain)
+  // Générer des questions suggérées basées sur la marque, industrie, langue et pays
+  async generateQuestions(
+    brandName: string, 
+    industry: string, 
+    domain: string, 
+    country?: string, 
+    language?: string
+  ): Promise<QuestionSuggestion[]> {
+    // Détecter le pays et la langue si non fournis
+    const brandDetection = new BrandDetectionService()
+    const geoInfo = brandDetection['detectCountryAndLanguage'](domain)
+    const targetCountry = country || geoInfo.country
+    const targetLanguage = language || geoInfo.language
+
+    const baseQuestions = this.getBaseQuestionTemplates(industry, targetLanguage, targetCountry)
+    const brandSpecificQuestions = this.generateBrandSpecificQuestions(
+      brandName, industry, domain, targetCountry, targetLanguage
+    )
     
     // Combiner et prioriser
     const allQuestions = [...baseQuestions, ...brandSpecificQuestions]
@@ -144,80 +218,170 @@ export class QuestionGenerationService {
     })).slice(0, 20) // Limiter à 20 questions max
   }
 
-  // Templates de questions par industrie
-  private getBaseQuestionTemplates(industry: string): Omit<QuestionSuggestion, 'id' | 'searchVolume' | 'isSelected'>[] {
-    const templates = {
-      'Food & Beverage': [
-        { text: 'Top rated wine delivery apps?', category: 'comparison', priority: 1 },
-        { text: 'Compare wine store discounts?', category: 'pricing', priority: 2 },
-        { text: 'Best wine delivery services?', category: 'service', priority: 1 },
-        { text: 'Where to find rare wines?', category: 'specialty', priority: 2 },
-        { text: 'Best online deals on wine?', category: 'pricing', priority: 1 },
-        { text: 'Where to buy organic wine?', category: 'specialty', priority: 2 },
-        { text: 'Compare wine subscription services?', category: 'service', priority: 2 },
-        { text: 'Where to buy organic wine?', category: 'specialty', priority: 2 },
-        { text: 'Compare wine store return policies?', category: 'policy', priority: 3 }
-      ],
-      'Technology': [
+  // Templates de questions par industrie, langue et pays
+  private getBaseQuestionTemplates(
+    industry: string, 
+    language: string = 'English', 
+    country: string = 'United States'
+  ): Omit<QuestionSuggestion, 'id' | 'searchVolume' | 'isSelected'>[] {
+    
+    // Templates multilingues pour Food & Beverage
+    const foodBeverageTemplates = {
+      'English': {
+        'Morocco': [
+          { text: 'Best wine shops in Morocco?', category: 'location', priority: 1 },
+          { text: 'Where to buy alcohol in Morocco legally?', category: 'location', priority: 1 },
+          { text: 'Top wine importers in Morocco?', category: 'suppliers', priority: 2 },
+          { text: 'Moroccan wine vs imported wine quality?', category: 'comparison', priority: 2 },
+          { text: 'Best wine delivery in Casablanca/Rabat?', category: 'service', priority: 2 }
+        ],
+        'France': [
+          { text: 'Meilleurs cavistes en France?', category: 'location', priority: 1 },
+          { text: 'Compare wine store prices France?', category: 'pricing', priority: 1 },
+          { text: 'Best French wine regions to explore?', category: 'specialty', priority: 2 },
+          { text: 'Wine delivery services in France?', category: 'service', priority: 2 }
+        ],
+        'default': [
+          { text: 'Top rated wine delivery apps?', category: 'comparison', priority: 1 },
+          { text: 'Best wine delivery services?', category: 'service', priority: 1 },
+          { text: 'Compare wine store discounts?', category: 'pricing', priority: 2 },
+          { text: 'Where to find rare wines?', category: 'specialty', priority: 2 }
+        ]
+      },
+      'French': {
+        'Morocco': [
+          { text: 'Où acheter du vin au Maroc légalement ?', category: 'location', priority: 1 },
+          { text: 'Meilleurs cavistes à Casablanca et Rabat ?', category: 'location', priority: 1 },
+          { text: 'Importateurs de vin au Maroc ?', category: 'suppliers', priority: 2 },
+          { text: 'Livraison de vin au Maroc - options ?', category: 'service', priority: 2 },
+          { text: 'Vins marocains vs vins importés qualité ?', category: 'comparison', priority: 2 }
+        ],
+        'France': [
+          { text: 'Meilleurs cavistes en France ?', category: 'location', priority: 1 },
+          { text: 'Comparaison prix cavistes français ?', category: 'pricing', priority: 1 },
+          { text: 'Meilleures appellations viticoles françaises ?', category: 'specialty', priority: 2 },
+          { text: 'Services de livraison de vin en France ?', category: 'service', priority: 2 },
+          { text: 'Abonnements vin français - comparatif ?', category: 'service', priority: 2 }
+        ],
+        'default': [
+          { text: 'Meilleures applications de livraison de vin ?', category: 'comparison', priority: 1 },
+          { text: 'Où trouver des vins rares ?', category: 'specialty', priority: 1 },
+          { text: 'Comparaison des prix des cavistes ?', category: 'pricing', priority: 2 },
+          { text: 'Services de livraison de vin - avis ?', category: 'service', priority: 2 }
+        ]
+      }
+    }
+
+    // Templates pour Technology (multilingue)
+    const technologyTemplates = {
+      'English': [
         { text: 'Best project management tools?', category: 'comparison', priority: 1 },
         { text: 'Top software solutions for teams?', category: 'service', priority: 1 },
-        { text: 'Compare productivity apps pricing?', category: 'pricing', priority: 2 },
-        { text: 'Most reliable cloud platforms?', category: 'reliability', priority: 1 },
-        { text: 'Best collaboration software features?', category: 'features', priority: 1 },
-        { text: 'Top automation tools for businesses?', category: 'automation', priority: 2 },
-        { text: 'Compare API integration options?', category: 'integration', priority: 2 },
-        { text: 'Best customer support platforms?', category: 'support', priority: 2 }
+        { text: 'Compare productivity apps pricing?', category: 'pricing', priority: 2 }
       ],
-      'E-commerce': [
-        { text: 'Best online shopping platforms?', category: 'platform', priority: 1 },
-        { text: 'Compare e-commerce solutions?', category: 'comparison', priority: 1 },
-        { text: 'Most secure payment gateways?', category: 'security', priority: 1 },
-        { text: 'Best shipping and logistics services?', category: 'logistics', priority: 2 },
-        { text: 'Top customer service tools?', category: 'service', priority: 2 },
-        { text: 'Compare return policy options?', category: 'policy', priority: 3 }
-      ],
-      'Healthcare': [
-        { text: 'Best telemedicine platforms?', category: 'service', priority: 1 },
-        { text: 'Top healthcare management systems?', category: 'management', priority: 1 },
-        { text: 'Compare medical record software?', category: 'software', priority: 2 },
-        { text: 'Most trusted health apps?', category: 'apps', priority: 2 },
-        { text: 'Best patient care solutions?', category: 'care', priority: 1 }
+      'French': [
+        { text: 'Meilleurs outils de gestion de projet ?', category: 'comparison', priority: 1 },
+        { text: 'Solutions logicielles pour équipes ?', category: 'service', priority: 1 },
+        { text: 'Comparaison prix applications productivité ?', category: 'pricing', priority: 2 }
       ]
     }
 
-    return templates[industry as keyof typeof templates] || [
-      { text: 'Best solutions in this industry?', category: 'general', priority: 1 },
-      { text: 'Compare service providers?', category: 'comparison', priority: 2 },
-      { text: 'Top rated companies?', category: 'rating', priority: 2 },
-      { text: 'Most reliable services?', category: 'reliability', priority: 2 }
-    ]
+    // Sélectionner les templates appropriés
+    if (industry === 'Food & Beverage') {
+      const languageTemplates = foodBeverageTemplates[language as keyof typeof foodBeverageTemplates] || foodBeverageTemplates['English']
+      const countryTemplates = languageTemplates[country as keyof typeof languageTemplates] || languageTemplates['default']
+      return countryTemplates
+    }
+    
+    if (industry === 'Technology') {
+      return technologyTemplates[language as keyof typeof technologyTemplates] || technologyTemplates['English']
+    }
+
+    // Fallback générique selon la langue
+    const fallbackTemplates = {
+      'French': [
+        { text: 'Meilleures solutions dans ce secteur ?', category: 'general', priority: 1 },
+        { text: 'Comparaison des fournisseurs de services ?', category: 'comparison', priority: 2 },
+        { text: 'Entreprises les mieux notées ?', category: 'rating', priority: 2 }
+      ],
+      'English': [
+        { text: 'Best solutions in this industry?', category: 'general', priority: 1 },
+        { text: 'Compare service providers?', category: 'comparison', priority: 2 },
+        { text: 'Top rated companies?', category: 'rating', priority: 2 }
+      ]
+    }
+
+    return fallbackTemplates[language as keyof typeof fallbackTemplates] || fallbackTemplates['English']
   }
 
-  // Générer des questions spécifiques à la marque
-  private generateBrandSpecificQuestions(brandName: string, industry: string, domain: string): Omit<QuestionSuggestion, 'id' | 'searchVolume' | 'isSelected'>[] {
+  // Générer des questions spécifiques à la marque avec localisation
+  private generateBrandSpecificQuestions(
+    brandName: string, 
+    industry: string, 
+    domain: string,
+    country: string = 'United States',
+    language: string = 'English'
+  ): Omit<QuestionSuggestion, 'id' | 'searchVolume' | 'isSelected'>[] {
     const questions = []
     
-    // Questions directes sur la marque
-    questions.push(
-      { text: `${brandName} reviews and ratings?`, category: 'brand_direct', priority: 1 },
-      { text: `${brandName} vs competitors comparison?`, category: 'brand_comparison', priority: 1 },
-      { text: `${brandName} pricing and plans?`, category: 'brand_pricing', priority: 2 },
-      { text: `${brandName} customer support quality?`, category: 'brand_support', priority: 2 },
-      { text: `Is ${brandName} worth it?`, category: 'brand_value', priority: 1 }
-    )
+    // Questions directes sur la marque selon la langue
+    if (language === 'French') {
+      questions.push(
+        { text: `Avis et notes sur ${brandName} ?`, category: 'brand_direct', priority: 1 },
+        { text: `${brandName} vs concurrents - comparaison ?`, category: 'brand_comparison', priority: 1 },
+        { text: `Prix et tarifs ${brandName} ?`, category: 'brand_pricing', priority: 2 },
+        { text: `Qualité du service client ${brandName} ?`, category: 'brand_support', priority: 2 },
+        { text: `${brandName} vaut-il la peine ?`, category: 'brand_value', priority: 1 }
+      )
+    } else {
+      questions.push(
+        { text: `${brandName} reviews and ratings?`, category: 'brand_direct', priority: 1 },
+        { text: `${brandName} vs competitors comparison?`, category: 'brand_comparison', priority: 1 },
+        { text: `${brandName} pricing and plans?`, category: 'brand_pricing', priority: 2 },
+        { text: `${brandName} customer support quality?`, category: 'brand_support', priority: 2 },
+        { text: `Is ${brandName} worth it?`, category: 'brand_value', priority: 1 }
+      )
+    }
 
-    // Questions contextuelles selon le domaine
-    if (domain.includes('wine') || domain.includes('vino')) {
-      questions.push(
-        { text: `Where to buy ${brandName} wine?`, category: 'brand_location', priority: 1 },
-        { text: `${brandName} wine delivery options?`, category: 'brand_service', priority: 2 },
-        { text: `${brandName} wine selection quality?`, category: 'brand_quality', priority: 2 }
-      )
-    } else if (domain.includes('.ma') || industry === 'Food & Beverage') {
-      questions.push(
-        { text: `Where to buy Moroccan wine?`, category: 'location_specific', priority: 1 },
-        { text: `Best wine shops in Morocco?`, category: 'location_specific', priority: 2 }
-      )
+    // Questions contextuelles selon le domaine, pays et langue
+    if (domain.includes('wine') || domain.includes('vino') || industry === 'Food & Beverage') {
+      if (country === 'Morocco') {
+        if (language === 'French') {
+          questions.push(
+            { text: `Où acheter du vin ${brandName} au Maroc ?`, category: 'brand_location', priority: 1 },
+            { text: `${brandName} livre-t-il au Maroc ?`, category: 'brand_service', priority: 2 },
+            { text: `Qualité de la sélection ${brandName} ?`, category: 'brand_quality', priority: 2 },
+            { text: `${brandName} Casablanca vs Rabat - disponibilité ?`, category: 'brand_location', priority: 2 }
+          )
+        } else {
+          questions.push(
+            { text: `Where to buy ${brandName} wine in Morocco?`, category: 'brand_location', priority: 1 },
+            { text: `Does ${brandName} deliver to Morocco?`, category: 'brand_service', priority: 2 },
+            { text: `${brandName} wine selection quality?`, category: 'brand_quality', priority: 2 }
+          )
+        }
+      } else if (country === 'France') {
+        if (language === 'French') {
+          questions.push(
+            { text: `Où acheter du vin ${brandName} en France ?`, category: 'brand_location', priority: 1 },
+            { text: `${brandName} - livraison en France ?`, category: 'brand_service', priority: 2 },
+            { text: `Sélection ${brandName} - vins français vs importés ?`, category: 'brand_quality', priority: 2 }
+          )
+        }
+      } else {
+        // Pays par défaut
+        const locationText = language === 'French' 
+          ? `Où acheter du vin ${brandName} ?`
+          : `Where to buy ${brandName} wine?`
+        const deliveryText = language === 'French'
+          ? `Options de livraison ${brandName} ?`
+          : `${brandName} wine delivery options?`
+          
+        questions.push(
+          { text: locationText, category: 'brand_location', priority: 1 },
+          { text: deliveryText, category: 'brand_service', priority: 2 }
+        )
+      }
     }
 
     return questions

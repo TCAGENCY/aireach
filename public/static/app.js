@@ -86,7 +86,7 @@ class AIReachApp {
   }
 
   loadDemoData() {
-    // Données de démonstration avec le projet Nicolas
+    // Données de démonstration avec plusieurs projets pour tester le scroll
     this.projects = [
       {
         id: 1,
@@ -115,11 +115,123 @@ class AIReachApp {
         avg_position: 3.1,
         avg_sentiment_score: 0.65,
         created_at: '2024-01-10T14:20:00Z'
+      },
+      {
+        id: 3,
+        name: 'Lavinia Watch',
+        brand_name: 'Lavinia',
+        description: 'Surveillance concurrentielle Lavinia',
+        industry: 'Wine',
+        website_url: 'https://www.lavinia.fr',
+        status: 'active',
+        total_queries: 6,
+        total_responses: 18,
+        avg_position: 4.2,
+        avg_sentiment_score: 0.72,
+        created_at: '2024-01-08T09:15:00Z'
+      },
+      {
+        id: 4,
+        name: 'Carrefour Analysis',
+        brand_name: 'Carrefour',
+        description: 'Analyse Carrefour grande distribution',
+        industry: 'Retail',
+        website_url: 'https://www.carrefour.fr',
+        status: 'paused',
+        total_queries: 15,
+        total_responses: 67,
+        avg_position: 1.8,
+        avg_sentiment_score: 0.81,
+        created_at: '2024-01-05T16:45:00Z'
+      },
+      {
+        id: 5,
+        name: 'Orange Telecom',
+        brand_name: 'Orange',
+        description: 'Surveillance Orange télécommunications',
+        industry: 'Telecom',
+        website_url: 'https://www.orange.fr',
+        status: 'active',
+        total_queries: 20,
+        total_responses: 89,
+        avg_position: 2.1,
+        avg_sentiment_score: 0.69,
+        created_at: '2024-01-02T11:30:00Z'
+      },
+      {
+        id: 6,
+        name: 'BNP Paribas Track',
+        brand_name: 'BNP Paribas',
+        description: 'Surveillance secteur bancaire BNP',
+        industry: 'Finance',
+        website_url: 'https://www.bnpparibas.fr',
+        status: 'active',
+        total_queries: 11,
+        total_responses: 43,
+        avg_position: 3.4,
+        avg_sentiment_score: 0.58,
+        created_at: '2023-12-28T14:20:00Z'
+      },
+      {
+        id: 7,
+        name: 'Airbus Monitor',
+        brand_name: 'Airbus',
+        description: 'Surveillance Airbus aéronautique',
+        industry: 'Aerospace',
+        website_url: 'https://www.airbus.com',
+        status: 'active',
+        total_queries: 9,
+        total_responses: 34,
+        avg_position: 2.7,
+        avg_sentiment_score: 0.75,
+        created_at: '2023-12-25T08:00:00Z'
+      },
+      {
+        id: 8,
+        name: 'LVMH Luxury Watch',
+        brand_name: 'LVMH',
+        description: 'Surveillance marques luxe LVMH',
+        industry: 'Luxury',
+        website_url: 'https://www.lvmh.fr',
+        status: 'active',
+        total_queries: 18,
+        total_responses: 72,
+        avg_position: 1.6,
+        avg_sentiment_score: 0.86,
+        created_at: '2023-12-20T12:15:00Z'
+      },
+      {
+        id: 9,
+        name: 'Danone Health',
+        brand_name: 'Danone',
+        description: 'Surveillance Danone alimentaire',
+        industry: 'Food',
+        website_url: 'https://www.danone.com',
+        status: 'paused',
+        total_queries: 14,
+        total_responses: 56,
+        avg_position: 2.9,
+        avg_sentiment_score: 0.77,
+        created_at: '2023-12-18T10:30:00Z'
+      },
+      {
+        id: 10,
+        name: 'Renault Auto',
+        brand_name: 'Renault',
+        description: 'Surveillance automobile Renault',
+        industry: 'Automotive',
+        website_url: 'https://www.renault.fr',
+        status: 'active',
+        total_queries: 13,
+        total_responses: 51,
+        avg_position: 3.2,
+        avg_sentiment_score: 0.63,
+        created_at: '2023-12-15T15:45:00Z'
       }
     ];
     
     this.renderProjectsList();
-    console.log('📊 Loaded demo data with Nicolas project');
+    console.log('📊 Loaded demo data with 10 projects for scroll testing');
   }
 
   renderProjectsList() {
@@ -969,6 +1081,41 @@ class AIReachApp {
             >
           </div>
 
+          <!-- Champs Langue et Pays (affichés après détection) -->
+          <div id="geoLanguageFields" class="space-y-4 ${!this.wizardData.detectedInfo ? 'hidden' : ''}">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 class="text-sm font-semibold text-blue-900 mb-3">
+                <i class="fas fa-globe mr-2"></i>Détection Automatique
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="wizardCountry" class="block text-sm font-medium text-blue-800 mb-2">Pays:</label>
+                  <select id="wizardCountry" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent text-sm">
+                    <option value="Morocco">🇲🇦 Morocco</option>
+                    <option value="France">🇫🇷 France</option>
+                    <option value="United States">🇺🇸 United States</option>
+                    <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                    <option value="Canada">🇨🇦 Canada</option>
+                    <option value="Germany">🇩🇪 Germany</option>
+                    <option value="Spain">🇪🇸 Spain</option>
+                    <option value="Italy">🇮🇹 Italy</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="wizardLanguage" class="block text-sm font-medium text-blue-800 mb-2">Langue:</label>
+                  <select id="wizardLanguage" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent text-sm">
+                    <option value="French">🇫🇷 Français</option>
+                    <option value="English">🇺🇸 English</option>
+                    <option value="Arabic">🇸🇦 العربية</option>
+                    <option value="Spanish">🇪🇸 Español</option>
+                    <option value="German">🇩🇪 Deutsch</option>
+                    <option value="Italian">🇮🇹 Italiano</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="flex justify-center">
             <button 
               id="wizardStep1Next" 
@@ -1009,6 +1156,17 @@ class AIReachApp {
       nextBtn.className = this.wizardData.domain 
         ? 'bg-aireach-blue text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-semibold'
         : 'bg-gray-300 text-gray-500 px-8 py-3 rounded-lg font-semibold cursor-not-allowed';
+      
+      // Auto-détection en temps réel après 1 seconde d'inactivité
+      clearTimeout(this.detectionTimeout);
+      if (this.wizardData.domain && this.wizardData.domain.includes('.')) {
+        this.detectionTimeout = setTimeout(() => {
+          this.detectBrandInfo();
+        }, 1000);
+      } else {
+        // Cacher les champs si domaine invalide
+        document.getElementById('geoLanguageFields')?.classList.add('hidden');
+      }
     });
 
     nextBtn.addEventListener('click', () => {
@@ -1020,6 +1178,52 @@ class AIReachApp {
     document.getElementById('switchToBrandName')?.addEventListener('click', () => {
       this.showBrandNameInput();
     });
+  }
+
+  // Détection automatique en temps réel
+  async detectBrandInfo() {
+    if (!this.wizardData.domain || !this.wizardData.domain.includes('.')) return;
+
+    try {
+      const response = await axios.post('/api/brand/detect', {
+        domain: this.wizardData.domain
+      });
+
+      if (response.data.success) {
+        this.wizardData.detectedInfo = response.data.data;
+        
+        // Afficher les champs langue/pays
+        const geoFields = document.getElementById('geoLanguageFields');
+        const countrySelect = document.getElementById('wizardCountry');
+        const languageSelect = document.getElementById('wizardLanguage');
+        
+        if (geoFields && countrySelect && languageSelect) {
+          geoFields.classList.remove('hidden');
+          
+          // Pré-sélectionner les valeurs détectées
+          countrySelect.value = this.wizardData.detectedInfo.country;
+          languageSelect.value = this.wizardData.detectedInfo.language;
+          
+          // Sauvegarder les sélections
+          this.wizardData.selectedCountry = this.wizardData.detectedInfo.country;
+          this.wizardData.selectedLanguage = this.wizardData.detectedInfo.language;
+          
+          // Écouter les changements
+          countrySelect.addEventListener('change', (e) => {
+            this.wizardData.selectedCountry = e.target.value;
+          });
+          
+          languageSelect.addEventListener('change', (e) => {
+            this.wizardData.selectedLanguage = e.target.value;
+          });
+          
+          console.log('✅ Auto-détection réussie:', this.wizardData.detectedInfo);
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Auto-détection échouée (normale):', error.message);
+      // Ne pas afficher d'erreur, c'est une détection automatique
+    }
   }
 
   // Traitement étape 1: Détection de marque
@@ -1051,11 +1255,13 @@ class AIReachApp {
   // Étape 2: Sélection des questions
   async renderWizardStep2() {
     try {
-      // Générer les questions
+      // Générer les questions avec langue et pays
       const response = await axios.post('/api/questions/generate', {
         brandName: this.wizardData.brandInfo.detectedBrandName,
         industry: this.wizardData.brandInfo.industry,
-        domain: this.wizardData.domain
+        domain: this.wizardData.domain,
+        country: this.wizardData.selectedCountry || this.wizardData.brandInfo?.country,
+        language: this.wizardData.selectedLanguage || this.wizardData.brandInfo?.language
       });
 
       if (!response.data.success) {
@@ -1094,12 +1300,24 @@ class AIReachApp {
 
           <!-- Info marque détectée -->
           <div class="bg-blue-50 p-4 rounded-lg mb-6">
-            <div class="flex items-center">
-              <i class="fas fa-check-circle text-green-500 mr-2"></i>
-              <div>
-                <p class="font-semibold text-gray-900">Nom de marque détecté:</p>
-                <p class="text-aireach-blue font-bold text-lg">${this.wizardData.brandInfo.detectedBrandName}</p>
-                <p class="text-sm text-gray-600">Industrie: ${this.wizardData.brandInfo.industry}</p>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                <div>
+                  <p class="font-semibold text-gray-900">Marque détectée:</p>
+                  <p class="text-aireach-blue font-bold text-lg">${this.wizardData.brandInfo.detectedBrandName}</p>
+                  <p class="text-sm text-gray-600">Industrie: ${this.wizardData.brandInfo.industry}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-medium text-gray-700">
+                  <i class="fas fa-globe mr-1"></i>
+                  ${this.getCountryFlag(this.wizardData.selectedCountry || this.wizardData.brandInfo?.country)} ${this.wizardData.selectedCountry || this.wizardData.brandInfo?.country || 'Auto'}
+                </p>
+                <p class="text-sm font-medium text-gray-700">
+                  <i class="fas fa-language mr-1"></i>
+                  ${this.getLanguageFlag(this.wizardData.selectedLanguage || this.wizardData.brandInfo?.language)} ${this.wizardData.selectedLanguage || this.wizardData.brandInfo?.language || 'Auto'}
+                </p>
               </div>
             </div>
           </div>
@@ -1716,7 +1934,11 @@ class AIReachApp {
 
   async loadSuggestedPrompts() {
     try {
+      console.log('🔍 Loading suggested prompts for project:', this.currentProject);
+      console.log('🔗 API URL will be:', `/api/projects/${this.currentProject.id}/questions`);
+      
       const response = await axios.get(`/api/projects/${this.currentProject.id}/questions`);
+      console.log('📥 API Response:', response.data);
       
       if (response.data.success) {
         this.renderSuggestedPrompts(response.data.data);
@@ -1724,7 +1946,55 @@ class AIReachApp {
         throw new Error(response.data.error);
       }
     } catch (error) {
-      console.error('Failed to load suggested prompts:', error);
+      console.error('❌ Failed to load suggested prompts:', error);
+      console.error('📊 Current project at time of error:', this.currentProject);
+      
+      // Fallback direct pour Nicolas si l'API échoue
+      if (this.currentProject && this.currentProject.brand_name === 'Nicolas') {
+        console.log('🍷 Using fallback data for Nicolas');
+        const nicolasPrompts = [
+          {
+            id: 1,
+            question: "Quels sont les meilleurs vins de Nicolas pour les occasions spéciales ?",
+            category: "Produits",
+            description: "Questions sur la sélection premium de vins Nicolas",
+            search_volume: 1250,
+            is_active: true,
+            created_at: '2024-01-15T10:30:00Z'
+          },
+          {
+            id: 2,
+            question: "Comment Nicolas compare-t-il ses prix avec d'autres cavistes ?",
+            category: "Prix",
+            description: "Comparaison tarifaire avec la concurrence",
+            search_volume: 890,
+            is_active: true,
+            created_at: '2024-01-16T11:15:00Z'
+          },
+          {
+            id: 3,
+            question: "Quelle est la qualité du service client chez Nicolas ?",
+            category: "Services",
+            description: "Évaluation du service client et conseil",
+            search_volume: 650,
+            is_active: true,
+            created_at: '2024-01-17T09:45:00Z'
+          },
+          {
+            id: 4,
+            question: "Où trouver les magasins Nicolas près de chez moi ?",
+            category: "Général",
+            description: "Localisation des points de vente",
+            search_volume: 2100,
+            is_active: true,
+            created_at: '2024-01-19T16:30:00Z'
+          }
+        ];
+        
+        this.renderSuggestedPrompts(nicolasPrompts);
+        return;
+      }
+      
       this.showError('Impossible de charger les prompts suggérés');
     }
   }
@@ -1932,92 +2202,54 @@ class AIReachApp {
     }
   }
 
+  getCountryFlag(country) {
+    const flags = {
+      'Morocco': '🇲🇦',
+      'France': '🇫🇷', 
+      'United States': '🇺🇸',
+      'United Kingdom': '🇬🇧',
+      'Canada': '🇨🇦',
+      'Germany': '🇩🇪',
+      'Spain': '🇪🇸',
+      'Italy': '🇮🇹'
+    };
+    return flags[country] || '🌍';
+  }
+
+  getLanguageFlag(language) {
+    const flags = {
+      'French': '🇫🇷',
+      'English': '🇺🇸', 
+      'Arabic': '🇸🇦',
+      'Spanish': '🇪🇸',
+      'German': '🇩🇪',
+      'Italian': '🇮🇹'
+    };
+    return flags[language] || '🗣️';
+  }
+
   // Méthode pour afficher directement la page Suggested Prompts de Nicolas
   showNicolasSuggestedPrompts() {
+    console.log('🍷 Initializing Nicolas Suggested Prompts...');
+    console.log('📊 Available projects:', this.projects);
+    
     // Sélectionner le projet Nicolas
     this.currentProject = this.projects.find(p => p.brand_name === 'Nicolas') || this.projects[0];
+    console.log('🎯 Selected current project:', this.currentProject);
+    
     this.currentSection = 'suggested-prompts';
-    this.expandedProject = this.currentProject.id;
+    this.expandedProject = this.currentProject?.id;
+    
+    if (!this.currentProject) {
+      console.error('❌ No project found for Nicolas or fallback');
+      this.showError('Aucun projet trouvé');
+      return;
+    }
     
     this.updatePageHeader(`Suggested Prompts - ${this.currentProject.brand_name}`, `Questions suggérées pour ${this.currentProject.name}`);
     
-    // Données d'exemple pour Nicolas (vins)
-    const nicolasPrompts = [
-      {
-        id: 1,
-        question: "Quels sont les meilleurs vins de Nicolas pour les occasions spéciales ?",
-        category: "Produits",
-        description: "Questions sur la sélection premium de vins Nicolas",
-        search_volume: 1250,
-        is_active: true,
-        created_at: '2024-01-15T10:30:00Z'
-      },
-      {
-        id: 2,
-        question: "Comment Nicolas compare-t-il ses prix avec d'autres cavistes ?",
-        category: "Prix",
-        description: "Comparaison tarifaire avec la concurrence",
-        search_volume: 890,
-        is_active: true,
-        created_at: '2024-01-16T11:15:00Z'
-      },
-      {
-        id: 3,
-        question: "Quelle est la qualité du service client chez Nicolas ?",
-        category: "Services",
-        description: "Évaluation du service client et conseil",
-        search_volume: 650,
-        is_active: true,
-        created_at: '2024-01-17T09:45:00Z'
-      },
-      {
-        id: 4,
-        question: "Nicolas propose-t-il des cours de dégustation de vin ?",
-        category: "Services",
-        description: "Offres de formation et dégustation",
-        search_volume: 420,
-        is_active: false,
-        created_at: '2024-01-18T14:20:00Z'
-      },
-      {
-        id: 5,
-        question: "Où trouver les magasins Nicolas près de chez moi ?",
-        category: "Général",
-        description: "Localisation des points de vente",
-        search_volume: 2100,
-        is_active: true,
-        created_at: '2024-01-19T16:30:00Z'
-      },
-      {
-        id: 6,
-        question: "Nicolas vs Lavinia : quel caviste choisir ?",
-        category: "Comparaison",
-        description: "Comparaison avec le concurrent Lavinia",
-        search_volume: 780,
-        is_active: true,
-        created_at: '2024-01-20T08:10:00Z'
-      },
-      {
-        id: 7,
-        question: "Quels sont les avis clients sur l'e-commerce Nicolas ?",
-        category: "Avis",
-        description: "Retours d'expérience sur la boutique en ligne",
-        search_volume: 340,
-        is_active: false,
-        created_at: '2024-01-21T12:45:00Z'
-      },
-      {
-        id: 8,
-        question: "Les vins biologiques chez Nicolas sont-ils authentiques ?",
-        category: "Produits",
-        description: "Questions sur la certification bio des vins",
-        search_volume: 520,
-        is_active: true,
-        created_at: '2024-01-22T10:55:00Z'
-      }
-    ];
-
-    this.renderSuggestedPrompts(nicolasPrompts);
+    // Essayer de charger depuis l'API d'abord
+    this.loadSuggestedPrompts();
     this.renderProjectsList(); // Met à jour la sidebar pour montrer l'état actif
   }
 }
