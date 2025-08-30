@@ -71,6 +71,12 @@ class AIReachApp {
   }
 
   async loadProjects() {
+    console.log('🚀 FORCE LOADING DEMO DATA FOR DEBUG');
+    
+    // TEMPORAIRE: Ignorer complètement l'API et charger directement les données de démo
+    this.loadDemoData();
+    return;
+    
     try {
       console.log('🔄 Loading projects from API...');
       const response = await axios.get('/api/projects');
@@ -4883,56 +4889,6 @@ Rapport généré par AIREACH - Intelligence Artificielle pour la Surveillance d
       console.error('❌ Report generation failed:', error);
       this.showError('❌ Erreur lors de la génération du rapport');
     }
-  }
-
-    // Sélecteur de tri des concurrents
-    const sortSelect = document.getElementById('sortCompetitors');
-    if (sortSelect) {
-      sortSelect.addEventListener('change', (e) => {
-        this.showNotification(`Tri par ${e.target.selectedOptions[0].text}`, 'info');
-        // Ici, on pourrait implémenter le tri réel
-      });
-    }
-
-    // Bouton de génération de rapport
-    const generateReportBtn = document.getElementById('generateCompetitiveReportBtn');
-    if (generateReportBtn) {
-      generateReportBtn.addEventListener('click', () => {
-        this.showSuccess('📊 Génération du rapport concurrentiel en cours...');
-        setTimeout(() => {
-          this.showSuccess('✅ Rapport concurrentiel généré avec succès');
-        }, 2000);
-      });
-    }
-
-    // Bouton d'export des données
-    const exportBtn = document.getElementById('exportCompetitorsBtn');
-    if (exportBtn) {
-      exportBtn.addEventListener('click', () => {
-        this.showSuccess('💾 Export des données concurrentielles en cours...');
-        setTimeout(() => {
-          this.showSuccess('✅ Données exportées avec succès');
-        }, 1500);
-      });
-    }
-
-    // Bouton de programmation d'analyse
-    const scheduleBtn = document.getElementById('scheduleCompetitorAnalysisBtn');
-    if (scheduleBtn) {
-      scheduleBtn.addEventListener('click', () => {
-        this.showNotification('⏰ Programmation d\'analyse concurrentielle à venir', 'info');
-      });
-    }
-
-    // Bouton d'alertes concurrentielles
-    const alertsBtn = document.getElementById('alertsCompetitorsBtn');
-    if (alertsBtn) {
-      alertsBtn.addEventListener('click', () => {
-        this.showNotification('🔔 Configuration d\'alertes concurrentielles à venir', 'info');
-      });
-    }
-
-    console.log('👥 Competitors event listeners configured');
   }
 }
 
