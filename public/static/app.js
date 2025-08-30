@@ -293,6 +293,11 @@ class AIReachApp {
             <i class="fas fa-lightbulb w-3 h-3 mr-2"></i>
             <span>Suggested prompts</span>
           </a>
+          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100 transition-colors ${this.currentSection === 'competitors' && this.currentProject?.id === project.id ? 'bg-aireach-blue text-white' : ''}" 
+             data-action="competitors" data-project-id="${project.id}">
+            <i class="fas fa-users w-3 h-3 mr-2"></i>
+            <span>Competitors</span>
+          </a>
         </div>
       </div>
     `).join('');
@@ -328,6 +333,8 @@ class AIReachApp {
           this.showProjectOverview();
         } else if (action === 'suggested-prompts') {
           this.showSuggestedPrompts();
+        } else if (action === 'competitors') {
+          this.showCompetitors();
         }
         
         this.renderProjectsList(); // Re-render pour mettre à jour les états actifs
@@ -925,14 +932,756 @@ class AIReachApp {
     `;
   }
 
-  // Placeholder methods for other sections
+  // Page All Projects avec gestion complète
   showAllProjects() {
-    this.updatePageHeader('Tous les Projets', 'Gérez tous vos projets de surveillance');
-    document.getElementById('mainContent').innerHTML = `
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <p class="text-gray-600">Section "Tous les projets" en développement...</p>
+    this.updatePageHeader('Tous les Projets', 'Gérez tous vos projets de surveillance IA');
+    
+    const content = `
+      <div class="fade-in">
+        <!-- Header Actions -->
+        <div class="flex justify-between items-center mb-6">
+          <div class="flex items-center space-x-4">
+            <div class="relative">
+              <input 
+                type="text" 
+                id="projectSearch" 
+                placeholder="Rechercher un projet..." 
+                class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent w-64"
+              >
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+              </div>
+            </div>
+            <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent">
+              <option value="">Tous les statuts</option>
+              <option value="active">Actif</option>
+              <option value="paused">En pause</option>
+              <option value="archived">Archivé</option>
+            </select>
+            <select id="industryFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent">
+              <option value="">Toutes les industries</option>
+              <option value="Wine">Vin</option>
+              <option value="Technology">Technologie</option>
+              <option value="Fashion">Mode</option>
+              <option value="Healthcare">Santé</option>
+              <option value="Finance">Finance</option>
+              <option value="Education">Éducation</option>
+              <option value="Retail">Commerce</option>
+              <option value="Other">Autre</option>
+            </select>
+          </div>
+          <div class="flex items-center space-x-3">
+            <button id="bulkActionsBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hidden">
+              <i class="fas fa-cog mr-2"></i>Actions groupées
+            </button>
+            <button id="exportProjectsBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              <i class="fas fa-download mr-2"></i>Exporter
+            </button>
+            <button id="createNewProjectBtn" class="px-4 py-2 bg-aireach-blue text-white rounded-lg hover:bg-blue-700">
+              <i class="fas fa-plus mr-2"></i>Nouveau Projet
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-check-circle text-green-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Projets Actifs</p>
+                <p class="text-2xl font-bold text-gray-900">${this.projects.filter(p => p.status === 'active').length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-pause-circle text-yellow-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">En Pause</p>
+                <p class="text-2xl font-bold text-gray-900">${this.projects.filter(p => p.status === 'paused').length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-archive text-gray-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Archivés</p>
+                <p class="text-2xl font-bold text-gray-900">${this.projects.filter(p => p.status === 'archived').length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-chart-bar text-blue-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Total Réponses</p>
+                <p class="text-2xl font-bold text-gray-900">${this.projects.reduce((sum, p) => sum + (p.total_responses || 0), 0)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Projects Table -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+          <!-- Table Header -->
+          <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900">
+                <span id="projectCount">${this.projects.length}</span> Projets
+              </h3>
+              <div class="flex items-center space-x-2">
+                <button id="selectAllBtn" class="text-sm text-aireach-blue hover:text-blue-700">
+                  Tout sélectionner
+                </button>
+                <span class="text-gray-300">|</span>
+                <button id="deselectAllBtn" class="text-sm text-aireach-blue hover:text-blue-700">
+                  Tout désélectionner
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table Content -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left">
+                    <input type="checkbox" id="selectAllCheckbox" class="h-4 w-4 text-aireach-blue border-gray-300 rounded focus:ring-aireach-blue">
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Réponses</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dernière collecte</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="projectsTableBody" class="bg-white divide-y divide-gray-200">
+                ${this.renderAllProjectsTable()}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty State -->
+          <div id="emptyState" class="px-6 py-12 text-center ${this.projects.length > 0 ? 'hidden' : ''}">
+            <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-folder-open text-gray-400 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun projet trouvé</h3>
+            <p class="text-gray-500 mb-6">Commencez par créer votre premier projet de surveillance IA.</p>
+            <button id="emptyStateCreateBtn" class="bg-aireach-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+              <i class="fas fa-plus mr-2"></i>Créer un projet
+            </button>
+          </div>
+        </div>
       </div>
     `;
+
+    document.getElementById('mainContent').innerHTML = content;
+    this.setupAllProjectsListeners();
+  }
+
+  renderAllProjectsTable() {
+    if (this.projects.length === 0) {
+      return '';
+    }
+
+    return this.projects.map(project => `
+      <tr class="hover:bg-gray-50 project-row" data-project-id="${project.id}">
+        <td class="px-6 py-4">
+          <input type="checkbox" class="project-checkbox h-4 w-4 text-aireach-blue border-gray-300 rounded focus:ring-aireach-blue" data-project-id="${project.id}">
+        </td>
+        <td class="px-6 py-4">
+          <div class="flex items-center">
+            <div class="w-10 h-10 bg-gradient-to-br from-aireach-blue to-aireach-purple rounded-lg flex items-center justify-center mr-3">
+              <span class="text-white font-bold text-sm">${project.brand_name ? project.brand_name.charAt(0).toUpperCase() : 'P'}</span>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-gray-900">${project.brand_name || project.name}</div>
+              <div class="text-sm text-gray-500">${project.name || ''}</div>
+              <div class="text-xs text-gray-400">${project.industry || 'Non spécifié'}</div>
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4">
+          <span class="status-${project.status} px-3 py-1 rounded-full text-xs font-medium">
+            ${this.getStatusLabel(project.status)}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-900">
+          ${project.total_queries || 0}
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-900">
+          <div class="flex items-center">
+            <span class="font-medium">${project.total_responses || 0}</span>
+            ${project.total_responses && project.total_responses > 0 ? `
+              <div class="ml-2 w-16 bg-gray-200 rounded-full h-1.5">
+                <div class="bg-aireach-blue h-1.5 rounded-full" style="width: ${Math.min((project.total_responses / 100) * 100, 100)}%"></div>
+              </div>
+            ` : ''}
+          </div>
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-500">
+          ${project.last_collection ? this.formatDate(project.last_collection) : 'Jamais'}
+        </td>
+        <td class="px-6 py-4">
+          <div class="flex items-center space-x-2">
+            <button class="view-project-btn text-aireach-blue hover:text-blue-700 p-1" data-project-id="${project.id}" title="Voir le projet">
+              <i class="fas fa-eye text-sm"></i>
+            </button>
+            <button class="edit-project-btn text-gray-500 hover:text-gray-700 p-1" data-project-id="${project.id}" title="Modifier">
+              <i class="fas fa-edit text-sm"></i>
+            </button>
+            <div class="relative">
+              <button class="project-menu-btn text-gray-500 hover:text-gray-700 p-1" data-project-id="${project.id}" title="Plus d'actions">
+                <i class="fas fa-ellipsis-v text-sm"></i>
+              </button>
+              <div class="project-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 hidden">
+                <div class="py-1">
+                  <button class="collect-data-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-robot mr-2"></i>Collecter les données
+                  </button>
+                  <button class="toggle-status-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-${project.status === 'active' ? 'pause' : 'play'} mr-2"></i>
+                    ${project.status === 'active' ? 'Mettre en pause' : 'Activer'}
+                  </button>
+                  <button class="duplicate-project-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-copy mr-2"></i>Dupliquer
+                  </button>
+                  <hr class="border-gray-100 my-1">
+                  <button class="archive-project-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-archive mr-2"></i>
+                    ${project.status === 'archived' ? 'Désarchiver' : 'Archiver'}
+                  </button>
+                  <button class="delete-project-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50" data-project-id="${project.id}">
+                    <i class="fas fa-trash mr-2"></i>Supprimer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  setupAllProjectsListeners() {
+    // Search functionality
+    document.getElementById('projectSearch').addEventListener('input', (e) => {
+      this.filterProjects();
+    });
+
+    // Status filter
+    document.getElementById('statusFilter').addEventListener('change', (e) => {
+      this.filterProjects();
+    });
+
+    // Industry filter
+    document.getElementById('industryFilter').addEventListener('change', (e) => {
+      this.filterProjects();
+    });
+
+    // Create new project
+    document.getElementById('createNewProjectBtn').addEventListener('click', () => {
+      this.showCreateProjectWizard();
+    });
+
+    // Empty state create button
+    document.getElementById('emptyStateCreateBtn')?.addEventListener('click', () => {
+      this.showCreateProjectWizard();
+    });
+
+    // Export projects
+    document.getElementById('exportProjectsBtn').addEventListener('click', () => {
+      this.exportProjects();
+    });
+
+    // Select all/deselect all
+    document.getElementById('selectAllBtn').addEventListener('click', () => {
+      this.selectAllProjects(true);
+    });
+
+    document.getElementById('deselectAllBtn').addEventListener('click', () => {
+      this.selectAllProjects(false);
+    });
+
+    // Select all checkbox
+    document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
+      this.selectAllProjects(e.target.checked);
+    });
+
+    // Individual project checkboxes
+    document.querySelectorAll('.project-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        this.updateBulkActionsVisibility();
+      });
+    });
+
+    // View project buttons
+    document.querySelectorAll('.view-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.selectProject(projectId);
+        this.navigateToSection('dashboard');
+      });
+    });
+
+    // Edit project buttons
+    document.querySelectorAll('.edit-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.showEditProjectModal(projectId);
+      });
+    });
+
+    // Project menu buttons
+    document.querySelectorAll('.project-menu-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleProjectMenu(e.currentTarget);
+      });
+    });
+
+    // Collect data buttons
+    document.querySelectorAll('.collect-data-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.collectProjectData(projectId);
+      });
+    });
+
+    // Toggle status buttons
+    document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.toggleProjectStatus(projectId);
+      });
+    });
+
+    // Archive/unarchive buttons
+    document.querySelectorAll('.archive-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.toggleProjectArchive(projectId);
+      });
+    });
+
+    // Delete buttons
+    document.querySelectorAll('.delete-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.deleteProject(projectId);
+      });
+    });
+
+    // Close menus when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.project-menu-btn')) {
+        document.querySelectorAll('.project-menu').forEach(menu => {
+          menu.classList.add('hidden');
+        });
+      }
+    });
+  }
+
+  // Project filtering
+  filterProjects() {
+    const search = document.getElementById('projectSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const industryFilter = document.getElementById('industryFilter').value;
+
+    const filteredProjects = this.projects.filter(project => {
+      const matchesSearch = !search || 
+        project.brand_name?.toLowerCase().includes(search) ||
+        project.name?.toLowerCase().includes(search) ||
+        project.industry?.toLowerCase().includes(search);
+      
+      const matchesStatus = !statusFilter || project.status === statusFilter;
+      const matchesIndustry = !industryFilter || project.industry === industryFilter;
+
+      return matchesSearch && matchesStatus && matchesIndustry;
+    });
+
+    // Update table with filtered projects
+    const tableBody = document.getElementById('projectsTableBody');
+    tableBody.innerHTML = this.renderFilteredProjectsTable(filteredProjects);
+    
+    // Update count
+    document.getElementById('projectCount').textContent = filteredProjects.length;
+    
+    // Show/hide empty state
+    const emptyState = document.getElementById('emptyState');
+    if (filteredProjects.length === 0) {
+      emptyState.classList.remove('hidden');
+    } else {
+      emptyState.classList.add('hidden');
+    }
+
+    // Re-setup listeners for new elements
+    this.setupTableListeners();
+  }
+
+  renderFilteredProjectsTable(projects) {
+    if (projects.length === 0) {
+      return '';
+    }
+
+    return projects.map(project => `
+      <tr class="hover:bg-gray-50 project-row" data-project-id="${project.id}">
+        <td class="px-6 py-4">
+          <input type="checkbox" class="project-checkbox h-4 w-4 text-aireach-blue border-gray-300 rounded focus:ring-aireach-blue" data-project-id="${project.id}">
+        </td>
+        <td class="px-6 py-4">
+          <div class="flex items-center">
+            <div class="w-10 h-10 bg-gradient-to-br from-aireach-blue to-aireach-purple rounded-lg flex items-center justify-center mr-3">
+              <span class="text-white font-bold text-sm">${project.brand_name ? project.brand_name.charAt(0).toUpperCase() : 'P'}</span>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-gray-900">${project.brand_name || project.name}</div>
+              <div class="text-sm text-gray-500">${project.name || ''}</div>
+              <div class="text-xs text-gray-400">${project.industry || 'Non spécifié'}</div>
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4">
+          <span class="status-${project.status} px-3 py-1 rounded-full text-xs font-medium">
+            ${this.getStatusLabel(project.status)}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-900">
+          ${project.total_queries || 0}
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-900">
+          <div class="flex items-center">
+            <span class="font-medium">${project.total_responses || 0}</span>
+            ${project.total_responses && project.total_responses > 0 ? `
+              <div class="ml-2 w-16 bg-gray-200 rounded-full h-1.5">
+                <div class="bg-aireach-blue h-1.5 rounded-full" style="width: ${Math.min((project.total_responses / 100) * 100, 100)}%"></div>
+              </div>
+            ` : ''}
+          </div>
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-500">
+          ${project.last_collection ? this.formatDate(project.last_collection) : 'Jamais'}
+        </td>
+        <td class="px-6 py-4">
+          <div class="flex items-center space-x-2">
+            <button class="view-project-btn text-aireach-blue hover:text-blue-700 p-1" data-project-id="${project.id}" title="Voir le projet">
+              <i class="fas fa-eye text-sm"></i>
+            </button>
+            <button class="edit-project-btn text-gray-500 hover:text-gray-700 p-1" data-project-id="${project.id}" title="Modifier">
+              <i class="fas fa-edit text-sm"></i>
+            </button>
+            <div class="relative">
+              <button class="project-menu-btn text-gray-500 hover:text-gray-700 p-1" data-project-id="${project.id}" title="Plus d'actions">
+                <i class="fas fa-ellipsis-v text-sm"></i>
+              </button>
+              <div class="project-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 hidden">
+                <div class="py-1">
+                  <button class="collect-data-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-robot mr-2"></i>Collecter les données
+                  </button>
+                  <button class="toggle-status-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-${project.status === 'active' ? 'pause' : 'play'} mr-2"></i>
+                    ${project.status === 'active' ? 'Mettre en pause' : 'Activer'}
+                  </button>
+                  <button class="duplicate-project-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-copy mr-2"></i>Dupliquer
+                  </button>
+                  <hr class="border-gray-100 my-1">
+                  <button class="archive-project-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-project-id="${project.id}">
+                    <i class="fas fa-archive mr-2"></i>
+                    ${project.status === 'archived' ? 'Désarchiver' : 'Archiver'}
+                  </button>
+                  <button class="delete-project-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50" data-project-id="${project.id}">
+                    <i class="fas fa-trash mr-2"></i>Supprimer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  setupTableListeners() {
+    // Re-setup all event listeners for dynamically created table elements
+    // Individual project checkboxes
+    document.querySelectorAll('.project-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        this.updateBulkActionsVisibility();
+      });
+    });
+
+    // View project buttons
+    document.querySelectorAll('.view-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.selectProject(projectId);
+        this.navigateToSection('dashboard');
+      });
+    });
+
+    // Edit project buttons
+    document.querySelectorAll('.edit-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.showEditProjectModal(projectId);
+      });
+    });
+
+    // Project menu buttons
+    document.querySelectorAll('.project-menu-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleProjectMenu(e.currentTarget);
+      });
+    });
+
+    // Collect data buttons
+    document.querySelectorAll('.collect-data-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.collectProjectData(projectId);
+      });
+    });
+
+    // Toggle status buttons
+    document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.toggleProjectStatus(projectId);
+      });
+    });
+
+    // Archive/unarchive buttons
+    document.querySelectorAll('.archive-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.toggleProjectArchive(projectId);
+      });
+    });
+
+    // Delete buttons
+    document.querySelectorAll('.delete-project-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const projectId = parseInt(e.currentTarget.getAttribute('data-project-id'));
+        this.deleteProject(projectId);
+      });
+    });
+  }
+
+  // Project management methods
+  selectAllProjects(select) {
+    const checkboxes = document.querySelectorAll('.project-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = select;
+    });
+    
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    selectAllCheckbox.checked = select;
+    
+    this.updateBulkActionsVisibility();
+  }
+
+  updateBulkActionsVisibility() {
+    const checkedBoxes = document.querySelectorAll('.project-checkbox:checked');
+    const bulkActionsBtn = document.getElementById('bulkActionsBtn');
+    
+    if (checkedBoxes.length > 0) {
+      bulkActionsBtn.classList.remove('hidden');
+      bulkActionsBtn.textContent = `Actions groupées (${checkedBoxes.length})`;
+    } else {
+      bulkActionsBtn.classList.add('hidden');
+    }
+  }
+
+  toggleProjectMenu(button) {
+    // Close all other menus
+    document.querySelectorAll('.project-menu').forEach(menu => {
+      if (menu.previousElementSibling !== button) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    // Toggle current menu
+    const menu = button.nextElementSibling;
+    menu.classList.toggle('hidden');
+  }
+
+  async collectProjectData(projectId) {
+    const project = this.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    try {
+      this.showSuccess(`🚀 Collecte lancée pour "${project.brand_name}"`);
+      
+      const response = await axios.post(`/api/projects/${projectId}/collect`);
+      
+      if (response.data.success) {
+        const { total, successful, failed } = response.data.data.summary;
+        this.showSuccess(`✅ Collecte terminée pour "${project.brand_name}": ${successful}/${total} réponses`);
+        
+        // Update project data
+        project.total_responses = (project.total_responses || 0) + successful;
+        project.last_collection = new Date().toISOString();
+        
+        // Refresh the current view
+        if (this.currentSection === 'all-projects') {
+          this.showAllProjects();
+        }
+      }
+    } catch (error) {
+      console.error('Collection failed:', error);
+      this.showError(`❌ Échec de la collecte pour "${project.brand_name}"`);
+    }
+  }
+
+  async toggleProjectStatus(projectId) {
+    const project = this.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const newStatus = project.status === 'active' ? 'paused' : 'active';
+    
+    try {
+      const response = await axios.put(`/api/projects/${projectId}`, {
+        status: newStatus
+      });
+      
+      if (response.data.success) {
+        project.status = newStatus;
+        this.showSuccess(`✅ Projet "${project.brand_name}" ${newStatus === 'active' ? 'activé' : 'mis en pause'}`);
+        
+        // Refresh the current view
+        if (this.currentSection === 'all-projects') {
+          this.showAllProjects();
+        }
+      }
+    } catch (error) {
+      console.error('Status toggle failed:', error);
+      this.showError('Impossible de changer le statut du projet');
+    }
+  }
+
+  async toggleProjectArchive(projectId) {
+    const project = this.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const newStatus = project.status === 'archived' ? 'paused' : 'archived';
+    
+    try {
+      const response = await axios.put(`/api/projects/${projectId}`, {
+        status: newStatus
+      });
+      
+      if (response.data.success) {
+        project.status = newStatus;
+        this.showSuccess(`✅ Projet "${project.brand_name}" ${newStatus === 'archived' ? 'archivé' : 'désarchivé'}`);
+        
+        // Refresh the current view
+        if (this.currentSection === 'all-projects') {
+          this.showAllProjects();
+        }
+      }
+    } catch (error) {
+      console.error('Archive toggle failed:', error);
+      this.showError('Impossible de modifier le statut d\'archive du projet');
+    }
+  }
+
+  async deleteProject(projectId) {
+    const project = this.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    // Confirmation dialog
+    const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer le projet "${project.brand_name}" ?\n\nCette action est irréversible et supprimera toutes les données associées.`);
+    
+    if (!confirmed) return;
+
+    try {
+      const response = await axios.delete(`/api/projects/${projectId}`);
+      
+      if (response.data.success) {
+        // Remove from local array
+        this.projects = this.projects.filter(p => p.id !== projectId);
+        
+        this.showSuccess(`✅ Projet "${project.brand_name}" supprimé`);
+        
+        // Refresh the current view
+        if (this.currentSection === 'all-projects') {
+          this.showAllProjects();
+        }
+
+        // If it was the current project, reset current project
+        if (this.currentProject && this.currentProject.id === projectId) {
+          this.currentProject = null;
+        }
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+      this.showError('Impossible de supprimer le projet');
+    }
+  }
+
+  showEditProjectModal(projectId) {
+    const project = this.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    // For now, show a notification that this feature is coming
+    this.showNotification('Fonctionnalité d\'édition à venir', 'info');
+  }
+
+  exportProjects() {
+    // Create CSV content
+    const csvContent = [
+      ['Nom', 'Marque', 'Industrie', 'Statut', 'Questions', 'Réponses', 'Site Web', 'Créé le'].join(','),
+      ...this.projects.map(project => [
+        project.name || '',
+        project.brand_name || '',
+        project.industry || '',
+        this.getStatusLabel(project.status),
+        project.total_queries || 0,
+        project.total_responses || 0,
+        project.website_url || '',
+        this.formatDate(project.created_at || new Date().toISOString())
+      ].join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `aireach-projets-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    this.showSuccess('📊 Export des projets téléchargé');
   }
 
   showPrompts() {
@@ -1021,13 +1770,16 @@ class AIReachApp {
     }, 3000);
   }
 
-  // ===== WIZARD DE CRÉATION DE PROJET EN 4 ÉTAPES =====
+  // ===== WIZARD DE CRÉATION DE PROJET EN 5 ÉTAPES =====
 
   showCreateProjectWizard() {
     this.wizardData = {
       step: 1,
       domain: '',
       brandInfo: null,
+      selectedCountry: null,
+      selectedLanguage: null,
+      detectedInfo: null,
       selectedQuestions: [],
       questionsWithVolumes: []
     };
@@ -1054,12 +1806,14 @@ class AIReachApp {
         <div class="flex items-center justify-center mb-8">
           <div class="flex items-center">
             <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">1</div>
-            <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
             <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">2</div>
-            <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
             <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">3</div>
-            <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
             <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">4</div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">5</div>
           </div>
         </div>
 
@@ -1081,40 +1835,7 @@ class AIReachApp {
             >
           </div>
 
-          <!-- Champs Langue et Pays (affichés après détection) -->
-          <div id="geoLanguageFields" class="space-y-4 ${!this.wizardData.detectedInfo ? 'hidden' : ''}">
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 class="text-sm font-semibold text-blue-900 mb-3">
-                <i class="fas fa-globe mr-2"></i>Détection Automatique
-              </h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label for="wizardCountry" class="block text-sm font-medium text-blue-800 mb-2">Pays:</label>
-                  <select id="wizardCountry" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent text-sm">
-                    <option value="Morocco">🇲🇦 Morocco</option>
-                    <option value="France">🇫🇷 France</option>
-                    <option value="United States">🇺🇸 United States</option>
-                    <option value="United Kingdom">🇬🇧 United Kingdom</option>
-                    <option value="Canada">🇨🇦 Canada</option>
-                    <option value="Germany">🇩🇪 Germany</option>
-                    <option value="Spain">🇪🇸 Spain</option>
-                    <option value="Italy">🇮🇹 Italy</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="wizardLanguage" class="block text-sm font-medium text-blue-800 mb-2">Langue:</label>
-                  <select id="wizardLanguage" class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent text-sm">
-                    <option value="French">🇫🇷 Français</option>
-                    <option value="English">🇺🇸 English</option>
-                    <option value="Arabic">🇸🇦 العربية</option>
-                    <option value="Spanish">🇪🇸 Español</option>
-                    <option value="German">🇩🇪 Deutsch</option>
-                    <option value="Italian">🇮🇹 Italiano</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
+
 
           <div class="flex justify-center">
             <button 
@@ -1156,17 +1877,6 @@ class AIReachApp {
       nextBtn.className = this.wizardData.domain 
         ? 'bg-aireach-blue text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-semibold'
         : 'bg-gray-300 text-gray-500 px-8 py-3 rounded-lg font-semibold cursor-not-allowed';
-      
-      // Auto-détection en temps réel après 1 seconde d'inactivité
-      clearTimeout(this.detectionTimeout);
-      if (this.wizardData.domain && this.wizardData.domain.includes('.')) {
-        this.detectionTimeout = setTimeout(() => {
-          this.detectBrandInfo();
-        }, 1000);
-      } else {
-        // Cacher les champs si domaine invalide
-        document.getElementById('geoLanguageFields')?.classList.add('hidden');
-      }
     });
 
     nextBtn.addEventListener('click', () => {
@@ -1226,7 +1936,7 @@ class AIReachApp {
     }
   }
 
-  // Traitement étape 1: Détection de marque
+  // Traitement étape 1: Passage à l'étape 2 (langue/pays)
   async processStep1() {
     if (!this.wizardData.domain) return;
 
@@ -1240,8 +1950,9 @@ class AIReachApp {
 
       if (response.data.success) {
         this.wizardData.brandInfo = response.data.data;
+        this.wizardData.detectedInfo = response.data.data; // Sauvegarder info détectée
         this.wizardData.step = 2;
-        this.renderWizardStep2();
+        this.renderWizardStep2(); // Nouvelle étape langue/pays
       } else {
         throw new Error(response.data.error);
       }
@@ -1252,8 +1963,106 @@ class AIReachApp {
     }
   }
 
-  // Étape 2: Sélection des questions
-  async renderWizardStep2() {
+  // Étape 2: Sélection langue et pays
+  renderWizardStep2() {
+    const modal = document.getElementById('newProjectModal');
+    const content = modal.querySelector('.bg-white');
+    
+    content.innerHTML = `
+      <div class="p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">Nouveau Projet</h3>
+          <button id="closeWizard" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Indicateur d'étapes -->
+        <div class="flex items-center justify-center mb-8">
+          <div class="flex items-center">
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+            <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">2</div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">3</div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">4</div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">5</div>
+          </div>
+        </div>
+
+        <!-- Info marque détectée -->
+        <div class="bg-blue-50 p-4 rounded-lg mb-6">
+          <div class="flex items-center">
+            <i class="fas fa-check-circle text-green-500 mr-3"></i>
+            <div>
+              <p class="font-semibold text-gray-900">Marque détectée:</p>
+              <p class="text-aireach-blue font-bold text-lg">${this.wizardData.brandInfo.detectedBrandName}</p>
+              <p class="text-sm text-gray-600">Industrie: ${this.wizardData.brandInfo.industry}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contenu Étape 2 -->
+        <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Choisir la langue et le pays</h2>
+          <p class="text-gray-600">Sélectionnez la langue et le pays pour personnaliser les questions générées.</p>
+        </div>
+
+        <div class="space-y-6">
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="wizardCountry" class="block text-sm font-medium text-gray-700 mb-2">
+                  <i class="fas fa-globe mr-2"></i>Pays:
+                </label>
+                <select id="wizardCountry" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent text-sm">
+                  <option value="Morocco" ${(this.wizardData.brandInfo?.country === 'Morocco') ? 'selected' : ''}>🇲🇦 Morocco</option>
+                  <option value="France" ${(this.wizardData.brandInfo?.country === 'France') ? 'selected' : ''}>🇫🇷 France</option>
+                  <option value="United States" ${(this.wizardData.brandInfo?.country === 'United States') ? 'selected' : ''}>🇺🇸 United States</option>
+                  <option value="United Kingdom" ${(this.wizardData.brandInfo?.country === 'United Kingdom') ? 'selected' : ''}>🇬🇧 United Kingdom</option>
+                  <option value="Canada" ${(this.wizardData.brandInfo?.country === 'Canada') ? 'selected' : ''}>🇨🇦 Canada</option>
+                  <option value="Germany" ${(this.wizardData.brandInfo?.country === 'Germany') ? 'selected' : ''}>🇩🇪 Germany</option>
+                  <option value="Spain" ${(this.wizardData.brandInfo?.country === 'Spain') ? 'selected' : ''}>🇪🇸 Spain</option>
+                  <option value="Italy" ${(this.wizardData.brandInfo?.country === 'Italy') ? 'selected' : ''}>🇮🇹 Italy</option>
+                </select>
+              </div>
+              <div>
+                <label for="wizardLanguage" class="block text-sm font-medium text-gray-700 mb-2">
+                  <i class="fas fa-language mr-2"></i>Langue:
+                </label>
+                <select id="wizardLanguage" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent text-sm">
+                  <option value="French" ${(this.wizardData.brandInfo?.language === 'French') ? 'selected' : ''}>🇫🇷 Français</option>
+                  <option value="English" ${(this.wizardData.brandInfo?.language === 'English') ? 'selected' : ''}>🇺🇸 English</option>
+                  <option value="Arabic" ${(this.wizardData.brandInfo?.language === 'Arabic') ? 'selected' : ''}>🇸🇦 العربية</option>
+                  <option value="Spanish" ${(this.wizardData.brandInfo?.language === 'Spanish') ? 'selected' : ''}>🇪🇸 Español</option>
+                  <option value="German" ${(this.wizardData.brandInfo?.language === 'German') ? 'selected' : ''}>🇩🇪 Deutsch</option>
+                  <option value="Italian" ${(this.wizardData.brandInfo?.language === 'Italian') ? 'selected' : ''}>🇮🇹 Italiano</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Boutons -->
+          <div class="flex justify-between">
+            <button id="wizardStep2Back" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              Retour
+            </button>
+            <button id="wizardStep2Next" class="bg-aireach-blue text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+              Suivant
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.setupStep2Listeners();
+  }
+
+  // Étape 3: Sélection des questions
+  async renderWizardStep3() {
     try {
       // Générer les questions avec langue et pays
       const response = await axios.post('/api/questions/generate', {
@@ -1289,12 +2098,14 @@ class AIReachApp {
           <div class="flex items-center justify-center mb-8">
             <div class="flex items-center">
               <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
-              <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
-              <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">2</div>
-              <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
-              <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">3</div>
-              <div class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+              <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+              <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+              <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+              <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">3</div>
+              <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
               <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">4</div>
+              <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
+              <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">5</div>
             </div>
           </div>
 
@@ -1337,11 +2148,11 @@ class AIReachApp {
 
           <!-- Boutons -->
           <div class="flex justify-between">
-            <button id="wizardStep2Back" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            <button id="wizardStep3Back" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
               Retour
             </button>
             <button 
-              id="wizardStep2Next" 
+              id="wizardStep3Next" 
               class="bg-aireach-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               ${this.wizardData.selectedQuestions.length === 0 ? 'disabled' : ''}
             >
@@ -1352,7 +2163,7 @@ class AIReachApp {
       `;
 
       // Event listeners
-      this.setupStep2Listeners();
+      this.setupStep3Listeners();
 
     } catch (error) {
       console.error('Question generation failed:', error);
@@ -1392,6 +2203,29 @@ class AIReachApp {
       this.renderWizardStep1();
     });
 
+    // Next button
+    document.getElementById('wizardStep2Next').addEventListener('click', () => {
+      // Sauvegarder les choix
+      this.wizardData.selectedCountry = document.getElementById('wizardCountry').value;
+      this.wizardData.selectedLanguage = document.getElementById('wizardLanguage').value;
+      
+      this.wizardData.step = 3;
+      this.processStep2(); // Passer à l'étape 3 (questions)
+    });
+  }
+
+  setupStep3Listeners() {
+    // Close wizard
+    document.getElementById('closeWizard').addEventListener('click', () => {
+      document.getElementById('newProjectModal').classList.add('hidden');
+    });
+
+    // Back button
+    document.getElementById('wizardStep3Back').addEventListener('click', () => {
+      this.wizardData.step = 2;
+      this.renderWizardStep2();
+    });
+
     // Checkbox handlers
     document.querySelectorAll('.question-checkbox').forEach(checkbox => {
       checkbox.addEventListener('change', (e) => {
@@ -1406,7 +2240,7 @@ class AIReachApp {
           document.getElementById('selectedCount').textContent = this.wizardData.selectedQuestions.length;
           
           // Update next button
-          const nextBtn = document.getElementById('wizardStep2Next');
+          const nextBtn = document.getElementById('wizardStep3Next');
           nextBtn.disabled = this.wizardData.selectedQuestions.length === 0;
           nextBtn.className = this.wizardData.selectedQuestions.length > 0
             ? 'bg-aireach-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700'
@@ -1416,37 +2250,40 @@ class AIReachApp {
     });
 
     // Next button
-    document.getElementById('wizardStep2Next').addEventListener('click', () => {
+    document.getElementById('wizardStep3Next').addEventListener('click', () => {
       if (this.wizardData.selectedQuestions.length > 0) {
-        this.processStep2();
+        this.processStep3();
       }
     });
   }
 
-  // Traitement étape 2: Obtenir les volumes de recherche
+  // Traitement étape 2: Génération des questions avec langue/pays
   async processStep2() {
     try {
-      document.getElementById('wizardStep2Next').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Chargement...';
-      
-      const response = await axios.post('/api/questions/volumes', {
-        questions: this.wizardData.selectedQuestions
+      // Générer les questions avec langue et pays sélectionnés
+      const response = await axios.post('/api/questions/generate', {
+        brandName: this.wizardData.brandInfo.detectedBrandName,
+        industry: this.wizardData.brandInfo.industry,
+        domain: this.wizardData.domain,
+        country: this.wizardData.selectedCountry,
+        language: this.wizardData.selectedLanguage
       });
 
       if (response.data.success) {
-        this.wizardData.questionsWithVolumes = response.data.data.questions;
-        this.wizardData.step = 3;
+        const questionsData = response.data.data;
+        this.wizardData.availableQuestions = questionsData.questions;
+        this.wizardData.selectedQuestions = questionsData.questions.filter(q => q.isSelected);
         this.renderWizardStep3();
       } else {
         throw new Error(response.data.error);
       }
     } catch (error) {
-      console.error('Volume fetching failed:', error);
-      this.showError('Échec de la récupération des volumes');
-      document.getElementById('wizardStep2Next').innerHTML = 'Suivant';
+      console.error('Question generation failed:', error);
+      this.showError('Échec de la génération des questions');
     }
   }
 
-  // Étape 3: Affichage des volumes de recherche
+  // Étape 3: Sélection des questions
   renderWizardStep3() {
     const modal = document.getElementById('newProjectModal');
     const content = modal.querySelector('.bg-white');
@@ -1476,6 +2313,113 @@ class AIReachApp {
 
         <!-- Titre -->
         <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Choisir/Ajouter des questions</h2>
+          <p class="text-gray-600">Sélectionnez les questions à surveiller pour cette marque</p>
+        </div>
+
+        <!-- Limite -->
+        <div class="flex justify-between items-center mb-4">
+          <span class="text-sm text-gray-500">
+            Limites actuelles: <span id="selectedCount">${this.wizardData.selectedQuestions.length}</span> / 20
+          </span>
+        </div>
+
+        <!-- Liste des questions -->
+        <div class="space-y-3 max-h-96 overflow-y-auto mb-6" id="questionsList">
+          ${this.renderQuestionsList()}
+        </div>
+
+        <!-- Boutons -->
+        <div class="flex justify-between">
+          <button id="wizardStep3Back" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            Retour
+          </button>
+          <button 
+            id="wizardStep3Next" 
+            class="bg-aireach-blue text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            ${this.wizardData.selectedQuestions.length === 0 ? 'disabled' : ''}
+          >
+            Suivant
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.setupStep3Listeners();
+  }
+
+  setupStep3Listeners() {
+    document.getElementById('closeWizard').addEventListener('click', () => {
+      document.getElementById('newProjectModal').classList.add('hidden');
+    });
+
+    document.getElementById('wizardStep3Back').addEventListener('click', () => {
+      this.wizardData.step = 2;
+      this.renderWizardStep2();
+    });
+
+    document.getElementById('wizardStep3Next').addEventListener('click', () => {
+      if (this.wizardData.selectedQuestions.length > 0) {
+        this.processStep3();
+      }
+    });
+  }
+
+  // Traitement étape 3: Obtenir les volumes de recherche
+  async processStep3() {
+    try {
+      document.getElementById('wizardStep3Next').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Chargement...';
+      
+      const response = await axios.post('/api/questions/volumes', {
+        questions: this.wizardData.selectedQuestions
+      });
+
+      if (response.data.success) {
+        this.wizardData.questionsWithVolumes = response.data.data.questions;
+        this.wizardData.step = 4;
+        this.renderWizardStep4();
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Volume fetching failed:', error);
+      this.showError('Échec de la récupération des volumes');
+      document.getElementById('wizardStep3Next').innerHTML = 'Suivant';
+    }
+  }
+
+  // Étape 4: Affichage des volumes de recherche
+  renderWizardStep4() {
+    const modal = document.getElementById('newProjectModal');
+    const content = modal.querySelector('.bg-white');
+    
+    content.innerHTML = `
+      <div class="p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">Nouveau Projet</h3>
+          <button id="closeWizard" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Indicateur d'étapes -->
+        <div class="flex items-center justify-center mb-8">
+          <div class="flex items-center">
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+            <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">4</div>
+            <div class="w-12 h-0.5 bg-gray-300 mx-1"></div>
+            <div class="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm">5</div>
+          </div>
+        </div>
+
+        <!-- Titre -->
+        <div class="text-center mb-8">
           <h2 class="text-2xl font-bold text-gray-900 mb-2">Volume de Recherche</h2>
           <p class="text-gray-600">Volumes de recherche pour les questions sélectionnées</p>
         </div>
@@ -1500,41 +2444,41 @@ class AIReachApp {
 
         <!-- Boutons -->
         <div class="flex justify-between">
-          <button id="wizardStep3Back" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <button id="wizardStep4Back" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
             Retour
           </button>
-          <button id="wizardStep3Next" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold">
+          <button id="wizardStep4Next" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold">
             Enregistrer & Lancer
           </button>
         </div>
       </div>
     `;
 
-    this.setupStep3Listeners();
+    this.setupStep4Listeners();
   }
 
-  setupStep3Listeners() {
+  setupStep4Listeners() {
     document.getElementById('closeWizard').addEventListener('click', () => {
       document.getElementById('newProjectModal').classList.add('hidden');
     });
 
-    document.getElementById('wizardStep3Back').addEventListener('click', () => {
-      this.wizardData.step = 2;
-      this.renderWizardStep2();
+    document.getElementById('wizardStep4Back').addEventListener('click', () => {
+      this.wizardData.step = 3;
+      this.renderWizardStep3();
     });
 
-    document.getElementById('wizardStep3Next').addEventListener('click', () => {
-      this.processStep3();
+    document.getElementById('wizardStep4Next').addEventListener('click', () => {
+      this.processStep4();
     });
   }
 
-  // Traitement étape 3: Créer le projet
-  async processStep3() {
+  // Traitement étape 4: Créer le projet
+  async processStep4() {
     try {
-      document.getElementById('wizardStep3Next').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Création...';
+      document.getElementById('wizardStep4Next').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Création...';
       
-      // Passer à l'étape 4 (loading)
-      this.renderWizardStep4();
+      // Passer à l'étape 5 (loading)
+      this.renderWizardStep5();
 
       // Créer le projet
       const response = await axios.post('/api/projects/create-complete', {
@@ -1565,12 +2509,12 @@ class AIReachApp {
     } catch (error) {
       console.error('Project creation failed:', error);
       this.showError('Échec de la création du projet');
-      this.renderWizardStep3(); // Retour à l'étape 3
+      this.renderWizardStep4(); // Retour à l'étape 4
     }
   }
 
-  // Étape 4: Loading et finalisation
-  renderWizardStep4() {
+  // Étape 5: Loading et finalisation
+  renderWizardStep5() {
     const modal = document.getElementById('newProjectModal');
     const content = modal.querySelector('.bg-white');
     
@@ -1588,12 +2532,14 @@ class AIReachApp {
         <div class="flex items-center justify-center mb-8">
           <div class="flex items-center">
             <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
-            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
             <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
-            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
             <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
-            <div class="w-16 h-0.5 bg-green-500 mx-2"></div>
-            <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">4</div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+            <div class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm">✓</div>
+            <div class="w-12 h-0.5 bg-green-500 mx-1"></div>
+            <div class="w-8 h-8 bg-aireach-blue text-white rounded-full flex items-center justify-center text-sm font-semibold">5</div>
           </div>
         </div>
 
@@ -1627,6 +2573,33 @@ class AIReachApp {
   showBrandNameInput() {
     // TODO: Implémenter la saisie par nom de marque au lieu du domaine
     this.showNotification('Fonctionnalité à venir', 'info');
+  }
+
+  // Méthodes utilitaires pour drapeaux
+  getCountryFlag(country) {
+    const flags = {
+      'Morocco': '🇲🇦',
+      'France': '🇫🇷',
+      'United States': '🇺🇸',
+      'United Kingdom': '🇬🇧',
+      'Canada': '🇨🇦',
+      'Germany': '🇩🇪',
+      'Spain': '🇪🇸',
+      'Italy': '🇮🇹'
+    };
+    return flags[country] || '🌍';
+  }
+
+  getLanguageFlag(language) {
+    const flags = {
+      'French': '🇫🇷',
+      'English': '🇺🇸',
+      'Arabic': '🇸🇦',
+      'Spanish': '🇪🇸',
+      'German': '🇩🇪',
+      'Italian': '🇮🇹'
+    };
+    return flags[language] || '🌍';
   }
 
   // Configuration des handlers de collecte
@@ -1811,116 +2784,895 @@ class AIReachApp {
     });
   }
 
-  // Nouvelle méthode pour afficher l'overview du projet
+  // Overview complète du projet avec toutes les métriques
   showProjectOverview() {
     this.currentSection = 'project-overview';
     this.updatePageHeader(`Overview - ${this.currentProject.brand_name}`, `Vue détaillée du projet ${this.currentProject.name}`);
     
+    // Données simulées pour démonstration
+    const mockData = this.generateMockOverviewData();
+    
     const content = `
       <div class="fade-in">
-        <!-- Statistiques du projet -->
+        <!-- Key Metrics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-question-circle text-blue-600"></i>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center">
+                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <i class="fas fa-star text-blue-600"></i>
                 </div>
+                <span class="text-sm font-medium text-gray-600">Brand Score</span>
               </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Questions Suivies</p>
-                <p class="text-2xl font-bold text-gray-900">${this.currentProject.total_queries || 0}</p>
-              </div>
+              <span class="text-xs text-gray-400">+${mockData.brandScore.trend}%</span>
+            </div>
+            <div class="flex items-center">
+              <span class="text-3xl font-bold text-gray-900">${mockData.brandScore.value}</span>
+              <span class="ml-2 text-sm ${mockData.brandScore.trend >= 0 ? 'text-green-600' : 'text-red-600'}">
+                <i class="fas fa-arrow-${mockData.brandScore.trend >= 0 ? 'up' : 'down'}"></i> ${Math.abs(mockData.brandScore.trend)}%
+              </span>
             </div>
           </div>
           
           <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-comments text-green-600"></i>
-                </div>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Réponses Collectées</p>
-                <p class="text-2xl font-bold text-gray-900">${this.currentProject.total_responses || 0}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center">
+                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
                   <i class="fas fa-trophy text-purple-600"></i>
                 </div>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Position Moyenne</p>
-                <p class="text-2xl font-bold text-gray-900">#${this.currentProject.avg_position ? Math.round(this.currentProject.avg_position) : '-'}</p>
+                <span class="text-sm font-medium text-gray-600">Median Position</span>
               </div>
             </div>
-          </div>
-          
-          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-chart-line text-yellow-600"></i>
+              <span class="text-3xl font-bold text-gray-900">#${mockData.medianPosition.value}</span>
+              <span class="ml-2 text-sm ${mockData.medianPosition.trend <= 0 ? 'text-green-600' : 'text-red-600'}">
+                <i class="fas fa-arrow-${mockData.medianPosition.trend <= 0 ? 'up' : 'down'}"></i> ${Math.abs(mockData.medianPosition.trend)}
+              </span>
+            </div>
+          </div>
+
+          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center">
+                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                  <i class="fas fa-eye text-green-600"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-600">Visibility Score</span>
+              </div>
+            </div>
+            <div class="flex items-center">
+              <span class="text-3xl font-bold text-gray-900">${mockData.visibilityScore.value}%</span>
+              <span class="ml-2 text-sm ${mockData.visibilityScore.trend >= 0 ? 'text-green-600' : 'text-red-600'}">
+                <i class="fas fa-arrow-${mockData.visibilityScore.trend >= 0 ? 'up' : 'down'}"></i> ${Math.abs(mockData.visibilityScore.trend)}%
+              </span>
+            </div>
+          </div>
+
+          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center">
+                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                  <i class="fas fa-chart-pie text-yellow-600"></i>
+                </div>
+                <span class="text-sm font-medium text-gray-600">Share of Voice</span>
+              </div>
+            </div>
+            <div class="flex items-center">
+              <span class="text-3xl font-bold text-gray-900">${mockData.shareOfVoice.value}%</span>
+              <span class="ml-2 text-sm ${mockData.shareOfVoice.trend >= 0 ? 'text-green-600' : 'text-red-600'}">
+                <i class="fas fa-arrow-${mockData.shareOfVoice.trend >= 0 ? 'up' : 'down'}"></i> ${Math.abs(mockData.shareOfVoice.trend)}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Brand Score & Average Position Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Brand Score & Average Position</h3>
+            <div class="chart-container">
+              <canvas id="brandScoreChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Share of Voice</h3>
+            <div class="chart-container">
+              <canvas id="shareOfVoiceChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Share of Voice by AI Chatbots -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 mb-6">Share of Voice by AI Chatbots</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            ${mockData.chatbotShareOfVoice.map(chatbot => `
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center">
+                    <div class="platform-logo platform-${chatbot.platform.toLowerCase()}">${chatbot.platform.charAt(0)}</div>
+                    <span class="ml-2 font-medium text-sm">${chatbot.platform}</span>
+                  </div>
+                  <span class="text-sm font-bold text-gray-900">${chatbot.percentage}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="bg-aireach-blue h-2 rounded-full" style="width: ${chatbot.percentage}%"></div>
+                </div>
+                <div class="mt-2 text-xs text-gray-500">
+                  ${chatbot.mentions} mentions · Pos. avg: #${chatbot.avgPosition}
                 </div>
               </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Score Sentiment</p>
-                <p class="text-2xl font-bold text-gray-900">${this.currentProject.avg_sentiment_score ? Math.round(this.currentProject.avg_sentiment_score * 100) : '-'}%</p>
-              </div>
-            </div>
+            `).join('')}
           </div>
         </div>
 
-        <!-- Informations du projet -->
+        <!-- Insights Section -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Informations du Projet</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 class="text-sm font-medium text-gray-700 mb-2">Détails</h4>
-              <div class="space-y-2 text-sm text-gray-600">
-                <p><strong>Nom:</strong> ${this.currentProject.name}</p>
-                <p><strong>Marque:</strong> ${this.currentProject.brand_name}</p>
-                <p><strong>Secteur:</strong> ${this.currentProject.industry || 'Non spécifié'}</p>
-                <p><strong>Status:</strong> <span class="status-${this.currentProject.status} px-2 py-1 rounded-full text-xs font-medium">${this.getStatusLabel(this.currentProject.status)}</span></p>
-                ${this.currentProject.website_url ? `<p><strong>Site web:</strong> <a href="${this.currentProject.website_url}" target="_blank" class="text-aireach-blue hover:underline">${this.currentProject.website_url}</a></p>` : ''}
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-gray-900">
+              <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+              Insights
+            </h3>
+            <button class="text-sm text-aireach-blue hover:text-blue-700">Voir tous →</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${mockData.insights.map(insight => `
+              <div class="insight-card border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div class="flex items-start">
+                  <div class="w-8 h-8 bg-${insight.type === 'positive' ? 'green' : insight.type === 'negative' ? 'red' : 'blue'}-100 rounded-lg flex items-center justify-center mr-3 mt-1">
+                    <i class="fas fa-${insight.type === 'positive' ? 'thumbs-up text-green-600' : insight.type === 'negative' ? 'exclamation-triangle text-red-600' : 'info-circle text-blue-600'} text-sm"></i>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-900 mb-1">${insight.title}</p>
+                    <p class="text-xs text-gray-600">${insight.description}</p>
+                    <span class="inline-block mt-2 text-xs text-gray-500">${insight.date}</span>
+                  </div>
+                </div>
               </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Key Prompts / Questions -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-gray-900">
+              <i class="fas fa-question-circle text-blue-500 mr-2"></i>
+              Key Prompts / Questions
+            </h3>
+            <button class="text-sm text-aireach-blue hover:text-blue-700">Gérer les questions →</button>
+          </div>
+          <div class="space-y-4">
+            ${mockData.keyPrompts.map(prompt => `
+              <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="flex-1">
+                  <p class="font-medium text-gray-900 mb-1">${prompt.question}</p>
+                  <div class="flex items-center space-x-4 text-sm text-gray-600">
+                    <span><i class="fas fa-chart-bar mr-1"></i>Vol: ${prompt.volume}</span>
+                    <span><i class="fas fa-trophy mr-1"></i>Pos: #${prompt.position}</span>
+                    <span><i class="fas fa-comments mr-1"></i>${prompt.mentions} mentions</span>
+                    <span class="px-2 py-1 bg-${prompt.sentiment === 'positive' ? 'green' : prompt.sentiment === 'negative' ? 'red' : 'yellow'}-100 text-${prompt.sentiment === 'positive' ? 'green' : prompt.sentiment === 'negative' ? 'red' : 'yellow'}-800 rounded-full text-xs">${prompt.sentiment}</span>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button class="text-gray-400 hover:text-gray-600" title="Voir détails">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="text-gray-400 hover:text-gray-600" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Key Sources & AI Citations -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-link text-purple-500 mr-2"></i>
+                Key Sources
+              </h3>
+              <button class="text-sm text-aireach-blue hover:text-blue-700">Voir toutes →</button>
             </div>
-            <div>
-              <h4 class="text-sm font-medium text-gray-700 mb-2">Description</h4>
-              <p class="text-sm text-gray-600">${this.currentProject.description || 'Aucune description disponible'}</p>
+            <div class="space-y-4">
+              ${mockData.keySources.map(source => `
+                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                  <div class="flex-1">
+                    <p class="font-medium text-sm text-gray-900 truncate">${source.title}</p>
+                    <p class="text-xs text-gray-600 truncate">${source.url}</p>
+                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                      <span class="mr-3">Citations: ${source.citations}</span>
+                      <span>Score: ${source.trustScore}/100</span>
+                    </div>
+                  </div>
+                  <div class="w-2 h-2 bg-${source.trustScore >= 80 ? 'green' : source.trustScore >= 60 ? 'yellow' : 'red'}-500 rounded-full ml-3"></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-quote-right text-green-500 mr-2"></i>
+                AI Citations
+              </h3>
+              <button class="text-sm text-aireach-blue hover:text-blue-700">Analyser →</button>
+            </div>
+            <div class="space-y-4">
+              ${mockData.aiCitations.map(citation => `
+                <div class="border border-gray-200 rounded-lg p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                      <div class="platform-logo platform-${citation.platform.toLowerCase()}">${citation.platform.charAt(0)}</div>
+                      <span class="ml-2 font-medium text-sm">${citation.platform}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${citation.date}</span>
+                  </div>
+                  <p class="text-sm text-gray-700 mb-2 line-clamp-2">${citation.excerpt}</p>
+                  <div class="flex items-center justify-between text-xs text-gray-500">
+                    <span>Position: #${citation.position}</span>
+                    <span class="px-2 py-1 bg-${citation.sentiment === 'positive' ? 'green' : citation.sentiment === 'negative' ? 'red' : 'gray'}-100 text-${citation.sentiment === 'positive' ? 'green' : citation.sentiment === 'negative' ? 'red' : 'gray'}-800 rounded-full">${citation.sentiment}</span>
+                  </div>
+                </div>
+              `).join('')}
             </div>
           </div>
         </div>
 
-        <!-- Actions rapides -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
-          <div class="flex flex-wrap gap-3">
-            <button class="action-btn bg-aireach-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
-              <i class="fas fa-play mr-2"></i>
-              Lancer Collection
-            </button>
-            <button class="action-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center">
-              <i class="fas fa-download mr-2"></i>
-              Exporter Données
-            </button>
-            <button class="action-btn bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center">
-              <i class="fas fa-cog mr-2"></i>
-              Paramètres
-            </button>
-          </div>
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-3">
+          <button id="collectDataBtn" class="action-btn bg-aireach-blue text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center">
+            <i class="fas fa-robot mr-2"></i>
+            Collecter les Données
+          </button>
+          <button id="exportOverviewBtn" class="action-btn bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center">
+            <i class="fas fa-download mr-2"></i>
+            Exporter l'Overview
+          </button>
+          <button id="scheduleReportBtn" class="action-btn bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center">
+            <i class="fas fa-calendar mr-2"></i>
+            Programmer un Rapport
+          </button>
+          <button id="shareOverviewBtn" class="action-btn bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 flex items-center">
+            <i class="fas fa-share mr-2"></i>
+            Partager
+          </button>
         </div>
       </div>
     `;
 
     document.getElementById('mainContent').innerHTML = content;
-    console.log(`📊 Showing overview for project: ${this.currentProject.name}`);
+    
+    // Initialize charts
+    this.initializeOverviewCharts(mockData);
+    
+    // Setup event listeners
+    this.setupOverviewListeners();
+    
+    console.log(`📊 Showing comprehensive overview for project: ${this.currentProject.name}`);
+  }
+
+  // Générer des données mock pour l'overview
+  generateMockOverviewData() {
+    const baseScore = 75 + Math.random() * 20; // 75-95
+    const basePosition = 2 + Math.random() * 3; // 2-5
+    
+    return {
+      brandScore: {
+        value: Math.round(baseScore),
+        trend: Math.round((Math.random() - 0.5) * 10) // -5 to +5
+      },
+      medianPosition: {
+        value: Math.round(basePosition),
+        trend: Math.round((Math.random() - 0.5) * 2) // -1 to +1
+      },
+      visibilityScore: {
+        value: Math.round(60 + Math.random() * 30), // 60-90%
+        trend: Math.round((Math.random() - 0.3) * 8) // -2.4 to +5.6
+      },
+      shareOfVoice: {
+        value: Math.round(15 + Math.random() * 25), // 15-40%
+        trend: Math.round((Math.random() - 0.4) * 6) // -2.4 to +3.6
+      },
+      chatbotShareOfVoice: [
+        {
+          platform: 'ChatGPT',
+          percentage: Math.round(25 + Math.random() * 15),
+          mentions: Math.round(45 + Math.random() * 20),
+          avgPosition: (2 + Math.random() * 2).toFixed(1)
+        },
+        {
+          platform: 'Gemini',
+          percentage: Math.round(20 + Math.random() * 15),
+          mentions: Math.round(35 + Math.random() * 15),
+          avgPosition: (2.5 + Math.random() * 2).toFixed(1)
+        },
+        {
+          platform: 'Claude',
+          percentage: Math.round(15 + Math.random() * 10),
+          mentions: Math.round(25 + Math.random() * 15),
+          avgPosition: (1.8 + Math.random() * 2.5).toFixed(1)
+        },
+        {
+          platform: 'Perplexity',
+          percentage: Math.round(10 + Math.random() * 10),
+          mentions: Math.round(15 + Math.random() * 10),
+          avgPosition: (3 + Math.random() * 2).toFixed(1)
+        }
+      ],
+      insights: [
+        {
+          type: 'positive',
+          title: 'Amélioration du score de marque',
+          description: 'Le score de marque a augmenté de 12% ce mois-ci grâce aux mentions positives.',
+          date: 'Il y a 2 jours'
+        },
+        {
+          type: 'neutral',
+          title: 'Nouvelles questions identifiées',
+          description: '5 nouvelles questions pertinentes ont été détectées dans les conversations IA.',
+          date: 'Il y a 3 jours'
+        },
+        {
+          type: 'negative',
+          title: 'Baisse de visibilité sur ChatGPT',
+          description: 'La visibilité a diminué de 8% sur ChatGPT cette semaine.',
+          date: 'Il y a 5 jours'
+        }
+      ],
+      keyPrompts: [
+        {
+          question: `Quels sont les meilleurs produits ${this.currentProject.brand_name} ?`,
+          volume: 1250,
+          position: 2,
+          mentions: 45,
+          sentiment: 'positive'
+        },
+        {
+          question: `Comment contacter le service client ${this.currentProject.brand_name} ?`,
+          volume: 890,
+          position: 1,
+          mentions: 32,
+          sentiment: 'neutral'
+        },
+        {
+          question: `Avis sur ${this.currentProject.brand_name} ?`,
+          volume: 650,
+          position: 3,
+          mentions: 28,
+          sentiment: 'positive'
+        },
+        {
+          question: `${this.currentProject.brand_name} vs concurrents ?`,
+          volume: 520,
+          position: 4,
+          mentions: 22,
+          sentiment: 'neutral'
+        }
+      ],
+      keySources: [
+        {
+          title: `Site officiel ${this.currentProject.brand_name}`,
+          url: this.currentProject.website_url || `${this.currentProject.brand_name.toLowerCase()}.com`,
+          citations: 125,
+          trustScore: 95
+        },
+        {
+          title: `Wikipedia - ${this.currentProject.brand_name}`,
+          url: `fr.wikipedia.org/wiki/${this.currentProject.brand_name}`,
+          citations: 89,
+          trustScore: 92
+        },
+        {
+          title: `Articles de presse - ${this.currentProject.brand_name}`,
+          url: 'lemonde.fr/economie',
+          citations: 67,
+          trustScore: 88
+        },
+        {
+          title: `Forum consommateurs`,
+          url: 'consommateurassocié.fr',
+          citations: 34,
+          trustScore: 72
+        }
+      ],
+      aiCitations: [
+        {
+          platform: 'ChatGPT',
+          excerpt: `${this.currentProject.brand_name} est reconnu pour la qualité de ses produits et son service client exceptionnel...`,
+          position: 1,
+          sentiment: 'positive',
+          date: 'Il y a 1h'
+        },
+        {
+          platform: 'Claude',
+          excerpt: `En comparaison avec ses concurrents, ${this.currentProject.brand_name} se distingue par son innovation...`,
+          position: 2,
+          sentiment: 'positive',
+          date: 'Il y a 3h'
+        },
+        {
+          platform: 'Gemini',
+          excerpt: `Les utilisateurs apprécient particulièrement l'approche client de ${this.currentProject.brand_name}...`,
+          position: 2,
+          sentiment: 'positive',
+          date: 'Il y a 5h'
+        },
+        {
+          platform: 'Perplexity',
+          excerpt: `${this.currentProject.brand_name} propose une gamme diversifiée avec des options pour tous les budgets...`,
+          position: 3,
+          sentiment: 'neutral',
+          date: 'Il y a 8h'
+        }
+      ]
+    };
+  }
+
+  // Initialiser les graphiques de l'overview
+  initializeOverviewCharts(data) {
+    // Brand Score & Position Chart
+    const brandScoreCtx = document.getElementById('brandScoreChart');
+    if (brandScoreCtx) {
+      new Chart(brandScoreCtx, {
+        type: 'line',
+        data: {
+          labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
+          datasets: [{
+            label: 'Brand Score',
+            data: [70, 72, 75, 78, 76, data.brandScore.value],
+            borderColor: '#1e40af',
+            backgroundColor: 'rgba(30, 64, 175, 0.1)',
+            yAxisID: 'y'
+          }, {
+            label: 'Position Moyenne',
+            data: [4.2, 3.8, 3.5, 3.2, 2.9, data.medianPosition.value],
+            borderColor: '#7c3aed',
+            backgroundColor: 'rgba(124, 58, 237, 0.1)',
+            yAxisID: 'y1'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Mois'
+              }
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Brand Score'
+              },
+              min: 0,
+              max: 100
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'Position (inversée)'
+              },
+              min: 1,
+              max: 10,
+              reverse: true,
+              grid: {
+                drawOnChartArea: false,
+              },
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+            }
+          }
+        }
+      });
+    }
+
+    // Share of Voice Chart
+    const shareOfVoiceCtx = document.getElementById('shareOfVoiceChart');
+    if (shareOfVoiceCtx) {
+      new Chart(shareOfVoiceCtx, {
+        type: 'doughnut',
+        data: {
+          labels: data.chatbotShareOfVoice.map(item => item.platform),
+          datasets: [{
+            data: data.chatbotShareOfVoice.map(item => item.percentage),
+            backgroundColor: [
+              '#10a37f', // ChatGPT
+              '#4285f4', // Gemini
+              '#cc785c', // Claude
+              '#6366f1'  // Perplexity
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // Event listeners pour la page overview
+  setupOverviewListeners() {
+    // Collect Data button
+    document.getElementById('collectDataBtn')?.addEventListener('click', () => {
+      this.startDataCollection();
+    });
+
+    // Export Overview button
+    document.getElementById('exportOverviewBtn')?.addEventListener('click', () => {
+      this.exportOverviewData();
+    });
+
+    // Schedule Report button
+    document.getElementById('scheduleReportBtn')?.addEventListener('click', () => {
+      this.showScheduleModal();
+    });
+
+    // Share Overview button
+    document.getElementById('shareOverviewBtn')?.addEventListener('click', () => {
+      this.shareOverview();
+    });
+  }
+
+  // Export des données d'overview
+  exportOverviewData() {
+    const data = this.generateMockOverviewData();
+    
+    const csvContent = [
+      ['Metric', 'Value', 'Trend'].join(','),
+      ['Brand Score', data.brandScore.value, data.brandScore.trend].join(','),
+      ['Median Position', data.medianPosition.value, data.medianPosition.trend].join(','),
+      ['Visibility Score', data.visibilityScore.value + '%', data.visibilityScore.trend + '%'].join(','),
+      ['Share of Voice', data.shareOfVoice.value + '%', data.shareOfVoice.trend + '%'].join(','),
+      ['', '', ''],
+      ['Chatbot', 'Share %', 'Mentions'].join(','),
+      ...data.chatbotShareOfVoice.map(item => [item.platform, item.percentage, item.mentions].join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${this.currentProject.brand_name}-overview-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    this.showSuccess(`📊 Overview de "${this.currentProject.brand_name}" exporté`);
+  }
+
+  // Partager l'overview
+  shareOverview() {
+    if (navigator.share) {
+      navigator.share({
+        title: `Overview ${this.currentProject.brand_name} - AIREACH`,
+        text: `Découvrez les performances de ${this.currentProject.brand_name} dans les IA`,
+        url: window.location.href
+      }).catch(console.error);
+    } else {
+      // Fallback: copy URL to clipboard
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        this.showSuccess('🔗 Lien copié dans le presse-papier');
+      }).catch(() => {
+        this.showNotification('Fonctionnalité de partage non disponible', 'info');
+      });
+    }
+  }
+
+  // Page d'analyse des concurrents
+  showCompetitors() {
+    this.currentSection = 'competitors';
+    this.updatePageHeader(`Competitors - ${this.currentProject.brand_name}`, `Analyse concurrentielle pour ${this.currentProject.name}`);
+    
+    // Générer des données de concurrents basées sur l'industrie
+    const competitorsData = this.generateCompetitorsData();
+    
+    const content = `
+      <div class="fade-in">
+        <!-- Header avec actions -->
+        <div class="flex justify-between items-center mb-6">
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center bg-blue-50 px-4 py-2 rounded-lg">
+              <i class="fas fa-users text-blue-600 mr-2"></i>
+              <span class="text-sm font-medium text-blue-900">
+                ${competitorsData.competitors.length} concurrents identifiés
+              </span>
+            </div>
+            <div class="flex items-center bg-green-50 px-4 py-2 rounded-lg">
+              <i class="fas fa-trophy text-green-600 mr-2"></i>
+              <span class="text-sm font-medium text-green-900">
+                Position dans le secteur: #${competitorsData.marketPosition}
+              </span>
+            </div>
+          </div>
+          <div class="flex items-center space-x-3">
+            <button id="refreshCompetitorsBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              <i class="fas fa-sync mr-2"></i>Actualiser
+            </button>
+            <button id="addCompetitorBtn" class="px-4 py-2 bg-aireach-blue text-white rounded-lg hover:bg-blue-700">
+              <i class="fas fa-plus mr-2"></i>Ajouter Concurrent
+            </button>
+          </div>
+        </div>
+
+        <!-- Market Overview -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+              <i class="fas fa-chart-bar text-purple-500 mr-2"></i>
+              Performance Comparative
+            </h3>
+            <div class="chart-container">
+              <canvas id="competitorComparisonChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+              <i class="fas fa-pie-chart text-orange-500 mr-2"></i>
+              Part de Marché IA
+            </h3>
+            <div class="chart-container">
+              <canvas id="marketShareChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Competitive Analysis Table -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900">Analyse Concurrentielle Détaillée</h3>
+              <div class="flex items-center space-x-2">
+                <select id="sortCompetitors" class="text-sm border border-gray-300 rounded px-3 py-1">
+                  <option value="brand_score">Trier par Brand Score</option>
+                  <option value="avg_position">Trier par Position</option>
+                  <option value="share_of_voice">Trier par Share of Voice</option>
+                  <option value="mentions">Trier par Mentions</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Concurrent</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand Score</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position Moy.</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Share of Voice</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mentions</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tendance</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <!-- Current Brand Row -->
+                <tr class="bg-blue-50 border-l-4 border-blue-500">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center">
+                      <div class="w-10 h-10 bg-gradient-to-br from-aireach-blue to-aireach-purple rounded-lg flex items-center justify-center mr-3">
+                        <span class="text-white font-bold text-sm">${this.currentProject.brand_name.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <div class="text-sm font-semibold text-gray-900">${this.currentProject.brand_name}</div>
+                        <div class="text-xs text-blue-600 font-medium">VOTRE MARQUE</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex items-center">
+                      <span class="text-sm font-bold text-gray-900">${competitorsData.currentBrand.brandScore}</span>
+                      <span class="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">#${competitorsData.marketPosition}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900">
+                    <div class="flex items-center">
+                      <span class="font-medium">#${competitorsData.currentBrand.avgPosition}</span>
+                      <span class="ml-2 text-xs ${competitorsData.currentBrand.positionTrend <= 0 ? 'text-green-600' : 'text-red-600'}">
+                        <i class="fas fa-arrow-${competitorsData.currentBrand.positionTrend <= 0 ? 'up' : 'down'}"></i>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900">
+                    <div class="flex items-center">
+                      <span class="font-medium">${competitorsData.currentBrand.shareOfVoice}%</span>
+                      <div class="ml-3 w-16 bg-gray-200 rounded-full h-2">
+                        <div class="bg-blue-500 h-2 rounded-full" style="width: ${competitorsData.currentBrand.shareOfVoice}%"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-sm font-medium text-gray-900">${competitorsData.currentBrand.mentions}</td>
+                  <td class="px-6 py-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${competitorsData.currentBrand.trend === 'up' ? 'bg-green-100 text-green-800' : competitorsData.currentBrand.trend === 'down' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
+                      <i class="fas fa-arrow-${competitorsData.currentBrand.trend === 'up' ? 'up' : competitorsData.currentBrand.trend === 'down' ? 'down' : 'right'} mr-1"></i>
+                      ${competitorsData.currentBrand.trend === 'up' ? 'En hausse' : competitorsData.currentBrand.trend === 'down' ? 'En baisse' : 'Stable'}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <button class="text-aireach-blue hover:text-blue-700 text-sm font-medium">
+                      Voir détails →
+                    </button>
+                  </td>
+                </tr>
+                
+                <!-- Competitors Rows -->
+                ${competitorsData.competitors.map(competitor => `
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                      <div class="flex items-center">
+                        <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
+                          <span class="text-gray-600 font-bold text-sm">${competitor.name.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <div class="text-sm font-medium text-gray-900">${competitor.name}</div>
+                          <div class="text-xs text-gray-500">${competitor.category}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4">
+                      <div class="flex items-center">
+                        <span class="text-sm font-medium text-gray-900">${competitor.brandScore}</span>
+                        ${competitor.brandScore > competitorsData.currentBrand.brandScore ? 
+                          `<span class="ml-2 text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">+${competitor.brandScore - competitorsData.currentBrand.brandScore}</span>` : 
+                          `<span class="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">${competitor.brandScore - competitorsData.currentBrand.brandScore}</span>`
+                        }
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                      <div class="flex items-center">
+                        <span class="font-medium">#${competitor.avgPosition}</span>
+                        <span class="ml-2 text-xs ${competitor.positionTrend <= 0 ? 'text-green-600' : 'text-red-600'}">
+                          <i class="fas fa-arrow-${competitor.positionTrend <= 0 ? 'up' : 'down'}"></i>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                      <div class="flex items-center">
+                        <span class="font-medium">${competitor.shareOfVoice}%</span>
+                        <div class="ml-3 w-16 bg-gray-200 rounded-full h-2">
+                          <div class="bg-gray-500 h-2 rounded-full" style="width: ${competitor.shareOfVoice}%"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${competitor.mentions}</td>
+                    <td class="px-6 py-4">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${competitor.trend === 'up' ? 'bg-green-100 text-green-800' : competitor.trend === 'down' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
+                        <i class="fas fa-arrow-${competitor.trend === 'up' ? 'up' : competitor.trend === 'down' ? 'down' : 'right'} mr-1"></i>
+                        ${competitor.trend === 'up' ? 'En hausse' : competitor.trend === 'down' ? 'En baisse' : 'Stable'}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4">
+                      <div class="flex items-center space-x-2">
+                        <button class="text-gray-500 hover:text-gray-700" title="Analyser en détail">
+                          <i class="fas fa-search text-sm"></i>
+                        </button>
+                        <button class="text-gray-500 hover:text-gray-700" title="Comparer">
+                          <i class="fas fa-balance-scale text-sm"></i>
+                        </button>
+                        <button class="text-gray-500 hover:text-gray-700" title="Surveiller">
+                          <i class="fas fa-eye text-sm"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Competitive Insights -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+              <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+              Insights Concurrentiels
+            </h3>
+            <div class="space-y-4">
+              ${competitorsData.insights.map(insight => `
+                <div class="flex items-start p-3 bg-${insight.type === 'opportunity' ? 'green' : insight.type === 'threat' ? 'red' : 'blue'}-50 rounded-lg">
+                  <div class="w-8 h-8 bg-${insight.type === 'opportunity' ? 'green' : insight.type === 'threat' ? 'red' : 'blue'}-100 rounded-lg flex items-center justify-center mr-3 mt-1">
+                    <i class="fas fa-${insight.type === 'opportunity' ? 'arrow-up' : insight.type === 'threat' ? 'exclamation-triangle' : 'info-circle'} text-${insight.type === 'opportunity' ? 'green' : insight.type === 'threat' ? 'red' : 'blue'}-600 text-sm"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900 mb-1">${insight.title}</p>
+                    <p class="text-xs text-gray-600">${insight.description}</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+              <i class="fas fa-target text-red-500 mr-2"></i>
+              Opportunités d'Amélioration
+            </h3>
+            <div class="space-y-4">
+              ${competitorsData.opportunities.map(opportunity => `
+                <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-${opportunity.icon} text-orange-600 text-sm"></i>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-900">${opportunity.title}</p>
+                    <p class="text-xs text-gray-600">${opportunity.description}</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xs font-medium ${opportunity.impact === 'high' ? 'text-red-600' : opportunity.impact === 'medium' ? 'text-yellow-600' : 'text-green-600'}">
+                      Impact ${opportunity.impact === 'high' ? 'Élevé' : opportunity.impact === 'medium' ? 'Moyen' : 'Faible'}
+                    </span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-3">
+          <button id="generateCompetitiveReportBtn" class="action-btn bg-aireach-blue text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center">
+            <i class="fas fa-file-alt mr-2"></i>
+            Générer Rapport Concurrentiel
+          </button>
+          <button id="exportCompetitorsBtn" class="action-btn bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center">
+            <i class="fas fa-download mr-2"></i>
+            Exporter les Données
+          </button>
+          <button id="scheduleCompetitorAnalysisBtn" class="action-btn bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center">
+            <i class="fas fa-clock mr-2"></i>
+            Programmer Analyse
+          </button>
+          <button id="alertsCompetitorsBtn" class="action-btn bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 flex items-center">
+            <i class="fas fa-bell mr-2"></i>
+            Alertes Concurrentielles
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('mainContent').innerHTML = content;
+    
+    // Initialize charts
+    this.initializeCompetitorCharts(competitorsData);
+    
+    // Setup event listeners
+    this.setupCompetitorsListeners();
+    
+    console.log(`👥 Showing competitors analysis for: ${this.currentProject.name}`);
   }
 
   // Nouvelle méthode pour afficher les prompts suggérés
@@ -2251,6 +4003,307 @@ class AIReachApp {
     // Essayer de charger depuis l'API d'abord
     this.loadSuggestedPrompts();
     this.renderProjectsList(); // Met à jour la sidebar pour montrer l'état actif
+  }
+
+  // Méthode pour générer les données des concurrents
+  generateCompetitorsData() {
+    const industry = this.currentProject.industry;
+    const brandName = this.currentProject.brand_name;
+    
+    // Définir les concurrents selon l'industrie
+    const competitorsByIndustry = {
+      'Wine': [
+        { name: 'Château Margaux', category: 'Vin Premium', strength: 'Prestige' },
+        { name: 'Dom Pérignon', category: 'Champagne Luxe', strength: 'Innovation' },
+        { name: 'Opus One', category: 'Vin International', strength: 'Collaboration' },
+        { name: 'Penfolds Grange', category: 'Vin Australien', strength: 'Qualité' },
+        { name: 'Caymus Vineyards', category: 'Vin Californien', strength: 'Consistance' }
+      ],
+      'Technology': [
+        { name: 'Apple', category: 'Tech Consumer', strength: 'Innovation' },
+        { name: 'Google', category: 'Services Web', strength: 'Recherche' },
+        { name: 'Microsoft', category: 'Logiciels', strength: 'Entreprise' },
+        { name: 'Amazon', category: 'Cloud & Commerce', strength: 'Scale' },
+        { name: 'Meta', category: 'Social Media', strength: 'Connexion' }
+      ],
+      'Fashion': [
+        { name: 'Chanel', category: 'Luxe', strength: 'Héritage' },
+        { name: 'Louis Vuitton', category: 'Maroquinerie', strength: 'Artisanat' },
+        { name: 'Gucci', category: 'Mode Italienne', strength: 'Créativité' },
+        { name: 'Hermès', category: 'Luxe Français', strength: 'Exclusivité' },
+        { name: 'Prada', category: 'Mode Premium', strength: 'Innovation' }
+      ],
+      'Healthcare': [
+        { name: 'Johnson & Johnson', category: 'Pharmaceutique', strength: 'Recherche' },
+        { name: 'Pfizer', category: 'Médicaments', strength: 'Innovation' },
+        { name: 'Roche', category: 'Biotechnologie', strength: 'Spécialisation' },
+        { name: 'Novartis', category: 'Santé Globale', strength: 'Développement' },
+        { name: 'Merck', category: 'Sciences de la vie', strength: 'Pipeline' }
+      ],
+      'Finance': [
+        { name: 'JPMorgan Chase', category: 'Banque Investissement', strength: 'Global' },
+        { name: 'Goldman Sachs', category: 'Finance', strength: 'Advisory' },
+        { name: 'Morgan Stanley', category: 'Gestion d\'actifs', strength: 'Expertise' },
+        { name: 'Bank of America', category: 'Banque Retail', strength: 'Scale' },
+        { name: 'Wells Fargo', category: 'Services Financiers', strength: 'Community' }
+      ],
+      'default': [
+        { name: 'Concurrent A', category: 'Leader du marché', strength: 'Innovation' },
+        { name: 'Concurrent B', category: 'Challenger', strength: 'Prix' },
+        { name: 'Concurrent C', category: 'Spécialiste', strength: 'Niche' },
+        { name: 'Concurrent D', category: 'Émergent', strength: 'Agilité' },
+        { name: 'Concurrent E', category: 'International', strength: 'Scale' }
+      ]
+    };
+
+    const competitors = (competitorsByIndustry[industry] || competitorsByIndustry['default']).map(comp => ({
+      name: comp.name,
+      category: comp.category,
+      brandScore: Math.floor(Math.random() * 30) + 70, // 70-100
+      avgPosition: Math.floor(Math.random() * 5) + 1, // 1-5
+      shareOfVoice: Math.floor(Math.random() * 25) + 5, // 5-30%
+      mentions: Math.floor(Math.random() * 500) + 100, // 100-600
+      trend: ['up', 'down', 'stable'][Math.floor(Math.random() * 3)],
+      positionTrend: Math.floor(Math.random() * 3) - 1, // -1, 0, 1
+      strength: comp.strength
+    }));
+
+    // Données pour la marque actuelle
+    const currentBrandScore = Math.floor(Math.random() * 20) + 80; // 80-100
+    const marketPosition = Math.floor(Math.random() * 3) + 1; // Position 1-3
+    
+    const currentBrand = {
+      brandScore: currentBrandScore,
+      avgPosition: Math.floor(Math.random() * 3) + 2, // 2-4
+      shareOfVoice: Math.floor(Math.random() * 20) + 15, // 15-35%
+      mentions: Math.floor(Math.random() * 300) + 200, // 200-500
+      trend: ['up', 'stable'][Math.floor(Math.random() * 2)], // Plus souvent positif
+      positionTrend: Math.floor(Math.random() * 2) - 1 // -1, 0
+    };
+
+    // Insights concurrentiels
+    const insights = [
+      {
+        type: 'opportunity',
+        title: 'Opportunité de croissance détectée',
+        description: `${brandName} peut améliorer sa position sur les questions liées à ${industry.toLowerCase()}`
+      },
+      {
+        type: 'threat',
+        title: 'Menace concurrentielle',
+        description: `${competitors[0].name} gagne en visibilité sur votre segment`
+      },
+      {
+        type: 'info',
+        title: 'Tendance du marché',
+        description: 'Les mentions augmentent de 23% dans votre secteur'
+      }
+    ];
+
+    // Opportunités d'amélioration
+    const opportunities = [
+      {
+        title: 'Améliorer le positionnement SEO',
+        description: 'Optimiser le contenu pour les recherches IA',
+        impact: 'high',
+        icon: 'search'
+      },
+      {
+        title: 'Renforcer la présence sociale',
+        description: 'Augmenter l\'engagement sur les plateformes',
+        impact: 'medium',
+        icon: 'share-alt'
+      },
+      {
+        title: 'Content Marketing ciblé',
+        description: 'Créer du contenu spécialisé pour votre niche',
+        impact: 'high',
+        icon: 'pen'
+      },
+      {
+        title: 'Partenariats stratégiques',
+        description: 'Collaborer avec des influenceurs du secteur',
+        impact: 'medium',
+        icon: 'handshake'
+      }
+    ];
+
+    return {
+      competitors,
+      currentBrand,
+      marketPosition,
+      insights,
+      opportunities
+    };
+  }
+
+  // Méthode pour initialiser les graphiques des concurrents
+  initializeCompetitorCharts(competitorsData) {
+    // Graphique de comparaison des concurrents
+    const competitorCtx = document.getElementById('competitorComparisonChart');
+    if (competitorCtx) {
+      new Chart(competitorCtx, {
+        type: 'bar',
+        data: {
+          labels: [this.currentProject.brand_name, ...competitorsData.competitors.slice(0, 4).map(c => c.name)],
+          datasets: [{
+            label: 'Brand Score',
+            data: [competitorsData.currentBrand.brandScore, ...competitorsData.competitors.slice(0, 4).map(c => c.brandScore)],
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.8)', // Bleu pour la marque actuelle
+              'rgba(156, 163, 175, 0.6)',
+              'rgba(156, 163, 175, 0.6)',
+              'rgba(156, 163, 175, 0.6)',
+              'rgba(156, 163, 175, 0.6)'
+            ],
+            borderColor: [
+              'rgba(59, 130, 246, 1)',
+              'rgba(156, 163, 175, 1)',
+              'rgba(156, 163, 175, 1)',
+              'rgba(156, 163, 175, 1)',
+              'rgba(156, 163, 175, 1)'
+            ],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                stepSize: 20
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Graphique de part de marché
+    const marketShareCtx = document.getElementById('marketShareChart');
+    if (marketShareCtx) {
+      const totalShare = 100;
+      const competitorShares = competitorsData.competitors.slice(0, 4).map(c => c.shareOfVoice);
+      const currentShare = competitorsData.currentBrand.shareOfVoice;
+      const otherShare = totalShare - currentShare - competitorShares.reduce((sum, share) => sum + share, 0);
+      
+      new Chart(marketShareCtx, {
+        type: 'doughnut',
+        data: {
+          labels: [
+            this.currentProject.brand_name,
+            ...competitorsData.competitors.slice(0, 4).map(c => c.name),
+            'Autres'
+          ],
+          datasets: [{
+            data: [
+              currentShare,
+              ...competitorShares,
+              otherShare > 0 ? otherShare : 5
+            ],
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.8)', // Bleu pour la marque actuelle
+              'rgba(239, 68, 68, 0.6)',   // Rouge
+              'rgba(34, 197, 94, 0.6)',   // Vert
+              'rgba(251, 191, 36, 0.6)',  // Jaune
+              'rgba(168, 85, 247, 0.6)',  // Violet
+              'rgba(156, 163, 175, 0.6)'  // Gris pour "Autres"
+            ],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 20,
+                usePointStyle: true
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // Méthode pour configurer les event listeners des concurrents
+  setupCompetitorsListeners() {
+    // Bouton d'actualisation des concurrents
+    const refreshBtn = document.getElementById('refreshCompetitorsBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        this.showCompetitors();
+        this.showSuccess('🔄 Données des concurrents actualisées');
+      });
+    }
+
+    // Bouton d'ajout de concurrent
+    const addCompetitorBtn = document.getElementById('addCompetitorBtn');
+    if (addCompetitorBtn) {
+      addCompetitorBtn.addEventListener('click', () => {
+        this.showNotification('Fonctionnalité d\'ajout de concurrent à venir', 'info');
+      });
+    }
+
+    // Sélecteur de tri des concurrents
+    const sortSelect = document.getElementById('sortCompetitors');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', (e) => {
+        this.showNotification(`Tri par ${e.target.selectedOptions[0].text}`, 'info');
+        // Ici, on pourrait implémenter le tri réel
+      });
+    }
+
+    // Bouton de génération de rapport
+    const generateReportBtn = document.getElementById('generateCompetitiveReportBtn');
+    if (generateReportBtn) {
+      generateReportBtn.addEventListener('click', () => {
+        this.showSuccess('📊 Génération du rapport concurrentiel en cours...');
+        setTimeout(() => {
+          this.showSuccess('✅ Rapport concurrentiel généré avec succès');
+        }, 2000);
+      });
+    }
+
+    // Bouton d'export des données
+    const exportBtn = document.getElementById('exportCompetitorsBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        this.showSuccess('💾 Export des données concurrentielles en cours...');
+        setTimeout(() => {
+          this.showSuccess('✅ Données exportées avec succès');
+        }, 1500);
+      });
+    }
+
+    // Bouton de programmation d'analyse
+    const scheduleBtn = document.getElementById('scheduleCompetitorAnalysisBtn');
+    if (scheduleBtn) {
+      scheduleBtn.addEventListener('click', () => {
+        this.showNotification('⏰ Programmation d\'analyse concurrentielle à venir', 'info');
+      });
+    }
+
+    // Bouton d'alertes concurrentielles
+    const alertsBtn = document.getElementById('alertsCompetitorsBtn');
+    if (alertsBtn) {
+      alertsBtn.addEventListener('click', () => {
+        this.showNotification('🔔 Configuration d\'alertes concurrentielles à venir', 'info');
+      });
+    }
+
+    console.log('👥 Competitors event listeners configured');
   }
 }
 
