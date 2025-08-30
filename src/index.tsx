@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
+import { DataCollectionService } from './services/data-collector'
+import { AI_PLATFORMS } from './services/ai-platforms'
 
 // Types pour les bindings Cloudflare
 type Bindings = {
@@ -215,6 +217,154 @@ app.get('/api/platforms', async (c) => {
     return c.json({ 
       success: false, 
       error: 'Failed to fetch platforms' 
+    }, 500)
+  }
+})
+
+// Nouvelle API : Collecte manuelle de données pour un projet
+app.post('/api/projects/:id/collect', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+    
+    if (!projectId) {
+      return c.json({ 
+        success: false, 
+        error: 'Invalid project ID' 
+      }, 400)
+    }
+
+    // Créer le service de collecte (sans clés API pour la démo)
+    const collector = new DataCollectionService(env.DB, new Map())
+    
+    // Lancer la collecte
+    console.log(`🚀 Starting manual collection for project ${projectId}`)
+    const results = await collector.collectDataForProject(projectId)
+    
+    const successCount = results.filter(r => r.success).length
+    const totalCount = results.length
+
+    return c.json({
+      success: true,
+      data: {
+        results,
+        summary: {
+          total: totalCount,
+          successful: successCount,
+          failed: totalCount - successCount
+        }
+      }
+    })
+  } catch (error) {
+    console.error('Collection failed:', error)
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Collection failed' 
+    }, 500)
+  }
+})
+
+// API : Programmer la collecte automatique
+app.post('/api/projects/:id/schedule', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+    const body = await c.req.json()
+    const intervalMinutes = body.intervalMinutes || 60
+    
+    if (!projectId) {
+      return c.json({ 
+        success: false, 
+        error: 'Invalid project ID' 
+      }, 400)
+    }
+
+    // Créer le service de collecte
+    const collector = new DataCollectionService(env.DB, new Map())
+    
+    // Programmer la collecte
+    await collector.scheduleCollection(projectId, intervalMinutes)
+
+    return c.json({
+      success: true,
+      message: `Collection scheduled every ${intervalMinutes} minutes for project ${projectId}`
+    })
+  } catch (error) {
+    console.error('Scheduling failed:', error)
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Scheduling failed' 
+    }, 500)
+  }
+})
+
+// API : Configuration des clés API
+app.post('/api/config/api-keys', async (c) => {
+  try {
+    const body = await c.req.json()
+    
+    // En production, stocker de manière sécurisée (Cloudflare Secrets)
+    // Pour la démo, on retourne juste un succès
+    
+    return c.json({
+      success: true,
+      message: 'API keys configured successfully',
+      supportedPlatforms: AI_PLATFORMS.map(p => ({
+        id: p.id,
+        name: p.displayName,
+        required: p.requiresAuth
+      }))
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to configure API keys' 
+    }, 500)
+  }
+})
+
+// API : Status de la collecte
+app.get('/api/projects/:id/collection-status', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+    
+    // Récupérer les dernières collectes
+    const recentCollections = await env.DB.prepare(`
+      SELECT 
+        ar.*,
+        ap.display_name as platform_name,
+        tq.query_text
+      FROM ai_responses ar
+      JOIN ai_platforms ap ON ar.platform_id = ap.id
+      JOIN tracked_queries tq ON ar.query_id = tq.id
+      WHERE ar.project_id = ? 
+      ORDER BY ar.collected_at DESC
+      LIMIT 20
+    `).bind(projectId).all()
+
+    // Statistiques de collecte
+    const stats = await env.DB.prepare(`
+      SELECT 
+        COUNT(*) as total_responses,
+        COUNT(DISTINCT platform_id) as platforms_used,
+        AVG(brand_mentions_count) as avg_mentions,
+        MAX(collected_at) as last_collection
+      FROM ai_responses 
+      WHERE project_id = ?
+    `).bind(projectId).first()
+
+    return c.json({
+      success: true,
+      data: {
+        recentCollections: recentCollections.results || [],
+        stats: stats || {}
+      }
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to fetch collection status' 
     }, 500)
   }
 })

@@ -439,6 +439,43 @@ class AIReachApp {
           </div>
         </div>
 
+        <!-- Data Collection Panel -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900">Collecte de Données IA</h3>
+              <div class="flex space-x-2">
+                <button id="collectDataBtn" class="bg-aireach-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
+                  <i class="fas fa-robot mr-2"></i>
+                  Collecter Maintenant
+                </button>
+                <button id="scheduleCollectionBtn" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center">
+                  <i class="fas fa-clock mr-2"></i>
+                  Programmer
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="p-6">
+            <div id="collectionStatus" class="mb-4">
+              <div class="flex items-center text-sm text-gray-600">
+                <i class="fas fa-info-circle mr-2"></i>
+                Dernière collecte : <span id="lastCollection">Jamais</span>
+              </div>
+            </div>
+            <div id="collectionProgress" class="hidden">
+              <div class="flex items-center space-x-3">
+                <div class="loading-spinner w-5 h-5 border-2 border-aireach-blue border-t-transparent rounded-full"></div>
+                <span class="text-sm text-gray-600">Collecte en cours...</span>
+                <span id="collectionProgressText" class="text-sm font-medium text-aireach-blue">0/0</span>
+              </div>
+              <div class="mt-3 bg-gray-200 rounded-full h-2">
+                <div id="collectionProgressBar" class="bg-aireach-blue h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Recent Activity -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200">
           <div class="px-6 py-4 border-b border-gray-200">
@@ -453,6 +490,7 @@ class AIReachApp {
 
     document.getElementById('mainContent').innerHTML = content;
     this.loadProjectAnalytics();
+    this.setupCollectionHandlers();
   }
 
   async loadProjectAnalytics() {
@@ -762,6 +800,188 @@ class AIReachApp {
     setTimeout(() => {
       notification.remove();
     }, 3000);
+  }
+
+  // Configuration des handlers de collecte
+  setupCollectionHandlers() {
+    if (!this.currentProject) return;
+
+    const collectBtn = document.getElementById('collectDataBtn');
+    const scheduleBtn = document.getElementById('scheduleCollectionBtn');
+
+    if (collectBtn) {
+      collectBtn.addEventListener('click', () => {
+        this.startDataCollection();
+      });
+    }
+
+    if (scheduleBtn) {
+      scheduleBtn.addEventListener('click', () => {
+        this.showScheduleModal();
+      });
+    }
+
+    // Charger le statut de collecte
+    this.loadCollectionStatus();
+  }
+
+  // Lancer la collecte de données
+  async startDataCollection() {
+    if (!this.currentProject) return;
+
+    const progressContainer = document.getElementById('collectionProgress');
+    const collectBtn = document.getElementById('collectDataBtn');
+    
+    try {
+      // Afficher le progrès
+      progressContainer.classList.remove('hidden');
+      collectBtn.disabled = true;
+      collectBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Collecte...';
+
+      console.log(`🚀 Starting data collection for project ${this.currentProject.id}`);
+
+      const response = await axios.post(`/api/projects/${this.currentProject.id}/collect`);
+      
+      if (response.data.success) {
+        const { total, successful, failed } = response.data.data.summary;
+        
+        // Mettre à jour la barre de progression
+        document.getElementById('collectionProgressText').textContent = `${successful}/${total}`;
+        document.getElementById('collectionProgressBar').style.width = '100%';
+
+        // Afficher le résultat
+        setTimeout(() => {
+          progressContainer.classList.add('hidden');
+          
+          if (successful > 0) {
+            this.showSuccess(`✅ Collecte terminée : ${successful}/${total} réponses collectées`);
+            this.loadCollectionStatus(); // Recharger les données
+            this.loadProjectAnalytics(); // Mettre à jour les graphiques
+          } else {
+            this.showError(`⚠️ Collecte terminée mais aucune réponse collectée`);
+          }
+        }, 1000);
+
+        console.log(`✅ Collection completed: ${successful}/${total} successful`);
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('❌ Data collection failed:', error);
+      progressContainer.classList.add('hidden');
+      this.showError('Échec de la collecte de données');
+    } finally {
+      collectBtn.disabled = false;
+      collectBtn.innerHTML = '<i class="fas fa-robot mr-2"></i>Collecter Maintenant';
+    }
+  }
+
+  // Charger le statut de collecte
+  async loadCollectionStatus() {
+    if (!this.currentProject) return;
+
+    try {
+      const response = await axios.get(`/api/projects/${this.currentProject.id}/collection-status`);
+      
+      if (response.data.success) {
+        const { stats } = response.data.data;
+        
+        if (stats.last_collection) {
+          const lastCollection = new Date(stats.last_collection).toLocaleString('fr-FR');
+          document.getElementById('lastCollection').textContent = lastCollection;
+        }
+
+        // Mettre à jour les métriques si disponibles
+        if (stats.total_responses) {
+          console.log(`📊 Project has ${stats.total_responses} total responses from ${stats.platforms_used} platforms`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load collection status:', error);
+    }
+  }
+
+  // Afficher le modal de programmation
+  showScheduleModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Programmer la Collecte</h3>
+          <button id="closeScheduleModal" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Fréquence</label>
+            <select id="scheduleInterval" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent">
+              <option value="30">Toutes les 30 minutes</option>
+              <option value="60" selected>Toutes les heures</option>
+              <option value="240">Toutes les 4 heures</option>
+              <option value="720">Toutes les 12 heures</option>
+              <option value="1440">Quotidienne</option>
+            </select>
+          </div>
+          <div class="bg-blue-50 p-3 rounded-lg">
+            <div class="flex items-start">
+              <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-2"></i>
+              <div class="text-sm text-blue-700">
+                <p class="font-medium mb-1">Mode Démo</p>
+                <p>La collecte utilise des données simulées pour la démonstration. En production, elle interrogerait les vraies APIs des plateformes IA.</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-3 pt-4">
+            <button id="cancelSchedule" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Annuler
+            </button>
+            <button id="confirmSchedule" class="px-4 py-2 bg-aireach-blue text-white rounded-lg hover:bg-blue-700">
+              Programmer
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Event listeners pour le modal
+    document.getElementById('closeScheduleModal').addEventListener('click', () => {
+      modal.remove();
+    });
+
+    document.getElementById('cancelSchedule').addEventListener('click', () => {
+      modal.remove();
+    });
+
+    document.getElementById('confirmSchedule').addEventListener('click', async () => {
+      const interval = parseInt(document.getElementById('scheduleInterval').value);
+      
+      try {
+        const response = await axios.post(`/api/projects/${this.currentProject.id}/schedule`, {
+          intervalMinutes: interval
+        });
+
+        if (response.data.success) {
+          this.showSuccess(`✅ Collecte programmée toutes les ${interval} minutes`);
+          modal.remove();
+        } else {
+          throw new Error(response.data.error);
+        }
+      } catch (error) {
+        console.error('Scheduling failed:', error);
+        this.showError('Échec de la programmation');
+      }
+    });
+
+    // Fermer en cliquant sur l'overlay
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
   }
 }
 
