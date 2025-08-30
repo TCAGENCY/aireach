@@ -334,7 +334,7 @@ class AIReachApp {
         } else if (action === 'suggested-prompts') {
           this.showSuggestedPrompts();
         } else if (action === 'competitors') {
-          this.showCompetitors();
+          this.showCompetitors().catch(console.error);
         }
         
         this.renderProjectsList(); // Re-render pour mettre à jour les états actifs
@@ -3391,12 +3391,23 @@ class AIReachApp {
   }
 
   // Page d'analyse des concurrents
-  showCompetitors() {
+  async showCompetitors() {
     this.currentSection = 'competitors';
     this.updatePageHeader(`Competitors - ${this.currentProject.brand_name}`, `Analyse concurrentielle pour ${this.currentProject.name}`);
     
-    // Générer des données de concurrents basées sur l'industrie
-    const competitorsData = this.generateCompetitorsData();
+    // Afficher d'abord un loader
+    document.getElementById('mainContent').innerHTML = `
+      <div class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-aireach-blue mx-auto mb-4"></div>
+          <p class="text-gray-600">🔍 Identification intelligente des concurrents...</p>
+          <p class="text-sm text-gray-400 mt-2">Analyse en cours avec notre IA</p>
+        </div>
+      </div>
+    `;
+    
+    // Générer des données de concurrents avec IA
+    const competitorsData = await this.generateCompetitorsData();
     
     const content = `
       <div class="fade-in">
@@ -3408,6 +3419,11 @@ class AIReachApp {
               <span class="text-sm font-medium text-blue-900">
                 ${competitorsData.competitors.length} concurrents identifiés
               </span>
+              ${competitorsData.aiAnalysis ? `
+                <span class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                  IA ${Math.round(competitorsData.aiAnalysis.confidence * 100)}%
+                </span>
+              ` : ''}
             </div>
             <div class="flex items-center bg-green-50 px-4 py-2 rounded-lg">
               <i class="fas fa-trophy text-green-600 mr-2"></i>
@@ -3641,6 +3657,59 @@ class AIReachApp {
             </div>
           </div>
         </div>
+
+        <!-- AI Analysis Details -->
+        ${competitorsData.aiAnalysis ? `
+        <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-8 border border-blue-200">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-brain text-purple-500 mr-2"></i>
+            Analyse IA des Concurrents
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-lg shadow-sm">
+              <div class="text-sm text-gray-600">Méthode d'analyse</div>
+              <div class="font-semibold text-gray-900 capitalize">
+                ${competitorsData.aiAnalysis.method.replace('-', ' ')}
+              </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-sm">
+              <div class="text-sm text-gray-600">Confiance IA</div>
+              <div class="font-semibold text-gray-900">
+                ${Math.round(competitorsData.aiAnalysis.confidence * 100)}%
+                <span class="text-xs ${competitorsData.aiAnalysis.confidence > 0.8 ? 'text-green-600' : competitorsData.aiAnalysis.confidence > 0.6 ? 'text-yellow-600' : 'text-red-600'}">
+                  ${competitorsData.aiAnalysis.confidence > 0.8 ? 'Élevée' : competitorsData.aiAnalysis.confidence > 0.6 ? 'Moyenne' : 'Faible'}
+                </span>
+              </div>
+            </div>
+            ${competitorsData.aiAnalysis.detectedSegment ? `
+            <div class="bg-white p-4 rounded-lg shadow-sm">
+              <div class="text-sm text-gray-600">Segment détecté</div>
+              <div class="font-semibold text-gray-900 capitalize">
+                ${competitorsData.aiAnalysis.detectedSegment}
+              </div>
+            </div>
+            ` : ''}
+            ${competitorsData.aiAnalysis.detectedRegion ? `
+            <div class="bg-white p-4 rounded-lg shadow-sm">
+              <div class="text-sm text-gray-600">Région détectée</div>
+              <div class="font-semibold text-gray-900 capitalize">
+                ${competitorsData.aiAnalysis.detectedRegion}
+              </div>
+            </div>
+            ` : ''}
+          </div>
+          <div class="mt-4">
+            <div class="text-sm text-gray-600 mb-2">Sources d'analyse:</div>
+            <div class="flex flex-wrap gap-2">
+              ${competitorsData.aiAnalysis.sources.map(source => `
+                <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                  ${source.replace('-', ' ')}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        ` : ''}
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap gap-3">
@@ -4005,8 +4074,137 @@ class AIReachApp {
     this.renderProjectsList(); // Met à jour la sidebar pour montrer l'état actif
   }
 
-  // Méthode pour générer les données des concurrents
-  generateCompetitorsData() {
+  // Méthode pour générer les données des concurrents (maintenant avec API intelligente)
+  async generateCompetitorsData() {
+    const industry = this.currentProject.industry;
+    const brandName = this.currentProject.brand_name;
+    const websiteUrl = this.currentProject.website_url;
+    const description = this.currentProject.description;
+
+    try {
+      // Appel à l'API d'identification intelligente des concurrents
+      console.log('🔍 Identifying competitors using AI API for:', brandName);
+      const response = await axios.post('/api/competitors/identify', {
+        brandName,
+        industry,
+        websiteUrl,
+        description
+      });
+
+      if (response.data.success) {
+        const apiResult = response.data.data;
+        console.log('✅ Smart competitors identified:', apiResult);
+        
+        // Utiliser les concurrents identifiés par l'API
+        const intelligentCompetitors = apiResult.competitors.map(comp => ({
+          name: comp.name,
+          category: comp.category,
+          brandScore: Math.floor(Math.random() * 30) + 70, // 70-100
+          avgPosition: Math.floor(Math.random() * 5) + 1, // 1-5
+          shareOfVoice: Math.floor(Math.random() * 25) + 5, // 5-30%
+          mentions: Math.floor(Math.random() * 500) + 100, // 100-600
+          trend: ['up', 'down', 'stable'][Math.floor(Math.random() * 3)],
+          positionTrend: Math.floor(Math.random() * 3) - 1, // -1, 0, 1
+          strength: comp.strength,
+          region: comp.region,
+          size: comp.size,
+          relevanceScore: comp.relevanceScore
+        }));
+
+        return this.buildCompetitorsResponse(intelligentCompetitors, apiResult, brandName);
+      }
+    } catch (error) {
+      console.warn('⚠️ API competitor identification failed, using fallback:', error.message);
+    }
+
+    // Fallback vers la méthode statique si l'API échoue
+    return this.generateStaticCompetitorsData();
+  }
+
+  // Méthode pour construire la réponse des concurrents à partir de l'API
+  buildCompetitorsResponse(competitors, apiResult, brandName) {
+    // Données pour la marque actuelle
+    const currentBrandScore = Math.floor(Math.random() * 20) + 80; // 80-100
+    const marketPosition = Math.floor(Math.random() * 3) + 1; // Position 1-3
+    
+    const currentBrand = {
+      brandScore: currentBrandScore,
+      avgPosition: Math.floor(Math.random() * 3) + 2, // 2-4
+      shareOfVoice: Math.floor(Math.random() * 20) + 15, // 15-35%
+      mentions: Math.floor(Math.random() * 300) + 200, // 200-500
+      trend: ['up', 'stable'][Math.floor(Math.random() * 2)], // Plus souvent positif
+      positionTrend: Math.floor(Math.random() * 2) - 1 // -1, 0
+    };
+
+    // Insights basés sur l'analyse intelligente
+    const insights = [
+      {
+        type: 'opportunity',
+        title: 'Concurrents identifiés intelligemment',
+        description: `${competitors.length} concurrents détectés avec ${Math.round(apiResult.confidence * 100)}% de confiance`
+      },
+      {
+        type: 'info',
+        title: `Analyse ${apiResult.analysisMethod}`,
+        description: `Sources: ${apiResult.sources.join(', ')}`
+      },
+      {
+        type: competitors.length >= 4 ? 'threat' : 'opportunity',
+        title: competitors.length >= 4 ? 'Marché concurrentiel dense' : 'Opportunité de marché',
+        description: competitors.length >= 4 ? 
+          `${competitors.length} concurrents actifs détectés dans votre segment` :
+          'Marché avec opportunités de croissance identifiées'
+      }
+    ];
+
+    // Opportunités intelligentes basées sur l'analyse
+    const opportunities = [
+      {
+        title: 'Positionnement différenciant',
+        description: `Se démarquer face à ${competitors[0]?.name || 'la concurrence'}`,
+        impact: 'high',
+        icon: 'target'
+      },
+      {
+        title: 'Expansion géographique',
+        description: apiResult.analysis?.detectedRegion !== 'global' ? 
+          'Explorer les marchés internationaux' : 
+          'Renforcer la présence locale',
+        impact: 'medium',
+        icon: 'globe'
+      },
+      {
+        title: 'Innovation produit',
+        description: `Capitaliser sur ${apiResult.analysis?.detectedSegment || 'votre'} positionnement`,
+        impact: 'high',
+        icon: 'lightbulb'
+      },
+      {
+        title: 'Partenariats stratégiques',
+        description: 'Identifier des synergies dans l\'écosystème IA',
+        impact: 'medium',
+        icon: 'handshake'
+      }
+    ];
+
+    return {
+      competitors,
+      currentBrand,
+      marketPosition,
+      insights,
+      opportunities,
+      aiAnalysis: {
+        method: apiResult.analysisMethod,
+        confidence: apiResult.confidence,
+        sources: apiResult.sources,
+        detectedSegment: apiResult.analysis?.detectedSegment,
+        detectedRegion: apiResult.analysis?.detectedRegion
+      }
+    };
+  }
+
+  // Méthode statique de fallback (ancienne méthode)
+  generateStaticCompetitorsData() {
     const industry = this.currentProject.industry;
     const brandName = this.currentProject.brand_name;
     

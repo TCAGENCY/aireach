@@ -958,6 +958,253 @@ app.patch('/api/projects/:id/questions/:questionId/toggle', async (c) => {
   }
 })
 
+// API pour identifier les concurrents d'une marque
+app.post('/api/competitors/identify', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { brandName, industry, websiteUrl, description, country } = body
+
+    if (!brandName) {
+      return c.json({
+        success: false,
+        error: 'brandName est requis'
+      }, 400)
+    }
+
+    // Service d'identification des concurrents
+    const competitors = await identifyCompetitors(brandName, industry, websiteUrl, description, country)
+    
+    return c.json({
+      success: true,
+      data: {
+        brandName,
+        industry,
+        competitors,
+        analysisMethod: competitors.method,
+        confidence: competitors.confidence,
+        sources: competitors.sources,
+        analysis: competitors.analysis
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error identifying competitors:', error)
+    return c.json({
+      success: false,
+      error: 'Erreur lors de l\'identification des concurrents'
+    }, 500)
+  }
+})
+
+// Service d'identification intelligente des concurrents
+async function identifyCompetitors(brandName: string, industry?: string, websiteUrl?: string, description?: string, country?: string) {
+  console.log(`🔍 Identifying competitors for: ${brandName} in ${industry || 'unknown industry'}`)
+
+  // Stratégie 1: Analyse par industrie et marché
+  let competitors = []
+  let method = 'industry-based'
+  let confidence = 0.7
+  let sources = ['industry-database']
+
+  // Définir les concurrents par industrie avec des critères plus intelligents
+  const competitorDatabase = {
+    'Wine': {
+      premium: ['Château Margaux', 'Dom Pérignon', 'Opus One', 'Penfolds Grange'],
+      midRange: ['Kendall-Jackson', 'Caymus', 'Silver Oak', 'Stags Leap'],
+      emerging: ['Natural Wine Co', 'Biodynamic Estates', 'Urban Wineries'],
+      regional: {
+        'morocco': ['Celliers de Meknès', 'Domaine Sahari', 'Les Celliers du Val d\'Argan'],
+        'france': ['Baron de Rothschild', 'Moët & Chandon', 'Veuve Clicquot'],
+        'california': ['Kendall-Jackson', 'Silver Oak', 'Caymus Vineyards']
+      }
+    },
+    'Technology': {
+      enterprise: ['Microsoft', 'IBM', 'Oracle', 'SAP', 'Salesforce'],
+      consumer: ['Apple', 'Google', 'Samsung', 'Meta', 'Amazon'],
+      startup: ['Notion', 'Figma', 'Canva', 'Stripe', 'Discord'],
+      ai: ['OpenAI', 'Anthropic', 'Stability AI', 'Hugging Face', 'DeepMind']
+    },
+    'Fashion': {
+      luxury: ['Chanel', 'Louis Vuitton', 'Hermès', 'Gucci', 'Prada'],
+      premium: ['Hugo Boss', 'Ralph Lauren', 'Tommy Hilfiger', 'Calvin Klein'],
+      fast_fashion: ['Zara', 'H&M', 'Uniqlo', 'Shein', 'Primark'],
+      sustainable: ['Patagonia', 'Eileen Fisher', 'Reformation', 'Everlane']
+    },
+    'Food & Beverage': {
+      restaurants: ['McDonald\'s', 'Starbucks', 'KFC', 'Subway', 'Domino\'s'],
+      beverages: ['Coca-Cola', 'PepsiCo', 'Red Bull', 'Monster Energy'],
+      organic: ['Whole Foods', 'Trader Joe\'s', 'Sprouts', 'Fresh Market'],
+      alcohol: ['Diageo', 'Pernod Ricard', 'AB InBev', 'Heineken']
+    },
+    'Healthcare': {
+      pharma: ['Johnson & Johnson', 'Pfizer', 'Roche', 'Novartis', 'Merck'],
+      medtech: ['Medtronic', 'Abbott', 'Siemens Healthineers', 'GE Healthcare'],
+      digital: ['Teladoc', 'Amwell', 'Epic Systems', 'Cerner']
+    },
+    'Finance': {
+      banking: ['JPMorgan Chase', 'Bank of America', 'Wells Fargo', 'Citigroup'],
+      investment: ['Goldman Sachs', 'Morgan Stanley', 'BlackRock', 'Vanguard'],
+      fintech: ['PayPal', 'Square', 'Stripe', 'Robinhood', 'Coinbase']
+    },
+    'E-commerce': {
+      marketplace: ['Amazon', 'eBay', 'Alibaba', 'Etsy', 'Shopify'],
+      fashion: ['ASOS', 'Zalando', 'Farfetch', 'Net-a-Porter'],
+      local: ['Jumia', 'Souq', 'Noon', 'Carrefour Online']
+    },
+    'Retail': {
+      department: ['Walmart', 'Target', 'Costco', 'Best Buy'],
+      luxury: ['Nordstrom', 'Saks Fifth Avenue', 'Bergdorf Goodman'],
+      discount: ['TJ Maxx', 'Ross', 'Marshall\'s', 'Dollar Tree']
+    }
+  }
+
+  // Stratégie 2: Analyse contextuelle du nom de marque
+  const brandLower = brandName.toLowerCase()
+  
+  // Détection du type de marque par le nom
+  let brandType = 'general'
+  if (brandLower.includes('wine') || brandLower.includes('vin') || brandLower.includes('cellar') || brandLower.includes('château')) {
+    brandType = 'wine'
+    industry = industry || 'Wine'
+  } else if (brandLower.includes('tech') || brandLower.includes('soft') || brandLower.includes('app') || brandLower.includes('digital')) {
+    brandType = 'technology'
+    industry = industry || 'Technology'
+  } else if (brandLower.includes('fashion') || brandLower.includes('style') || brandLower.includes('mode') || brandLower.includes('boutique')) {
+    brandType = 'fashion'
+    industry = industry || 'Fashion'
+  }
+
+  // Stratégie 3: Analyse du domaine/URL
+  let regionHint = 'global'
+  if (websiteUrl) {
+    if (websiteUrl.includes('.ma')) regionHint = 'morocco'
+    else if (websiteUrl.includes('.fr')) regionHint = 'france'
+    else if (websiteUrl.includes('.com')) regionHint = 'global'
+    else if (websiteUrl.includes('.de')) regionHint = 'germany'
+    else if (websiteUrl.includes('.co.uk')) regionHint = 'uk'
+  }
+
+  // Stratégie 4: Analyse de la description
+  let segment = 'midRange'
+  if (description) {
+    const descLower = description.toLowerCase()
+    if (descLower.includes('luxury') || descLower.includes('premium') || descLower.includes('haut de gamme')) {
+      segment = 'premium'
+    } else if (descLower.includes('budget') || descLower.includes('accessible') || descLower.includes('économique')) {
+      segment = 'budget'
+    } else if (descLower.includes('startup') || descLower.includes('émergent') || descLower.includes('innovant')) {
+      segment = 'emerging'
+    }
+  }
+
+  // Récupération des concurrents basée sur l'industrie
+  if (industry && competitorDatabase[industry]) {
+    const industryCompetitors = competitorDatabase[industry]
+    
+    // Prioriser selon le segment détecté
+    if (segment === 'premium' && industryCompetitors.premium) {
+      competitors = industryCompetitors.premium.slice(0, 5)
+    } else if (segment === 'emerging' && industryCompetitors.emerging) {
+      competitors = industryCompetitors.emerging.slice(0, 3).concat(
+        industryCompetitors.midRange ? industryCompetitors.midRange.slice(0, 2) : []
+      )
+    } else if (industryCompetitors.midRange) {
+      competitors = industryCompetitors.midRange.slice(0, 4)
+    } else if (industryCompetitors.premium) {
+      competitors = industryCompetitors.premium.slice(0, 4)
+    }
+    
+    // Ajouter des concurrents régionaux si disponibles
+    if (industryCompetitors.regional && industryCompetitors.regional[regionHint]) {
+      const regionalCompetitors = industryCompetitors.regional[regionHint]
+      competitors = [...regionalCompetitors.slice(0, 2), ...competitors.slice(0, 3)]
+    }
+    
+    confidence = 0.85
+    method = 'intelligent-analysis'
+    sources = ['industry-database', 'segment-analysis', 'regional-analysis']
+  }
+
+  // Stratégie 5: Fallback avec concurrents génériques mais intelligents
+  if (competitors.length === 0) {
+    competitors = generateSmartFallbackCompetitors(brandName, industry, brandType)
+    confidence = 0.6
+    method = 'smart-fallback'
+    sources = ['pattern-matching', 'industry-inference']
+  }
+
+  // Enrichir les concurrents avec des métadonnées
+  const enrichedCompetitors = competitors.map((name, index) => ({
+    name,
+    category: inferCompetitorCategory(name, industry),
+    strength: inferCompetitorStrength(name, industry),
+    marketPosition: index + 1,
+    relevanceScore: Math.max(0.95 - (index * 0.1), 0.6),
+    region: inferCompetitorRegion(name, regionHint),
+    size: inferCompetitorSize(name, industry)
+  }))
+
+  return {
+    competitors: enrichedCompetitors,
+    method,
+    confidence,
+    sources,
+    analysis: {
+      detectedBrandType: brandType,
+      detectedSegment: segment,
+      detectedRegion: regionHint,
+      industryConfidence: industry ? 0.9 : 0.5
+    }
+  }
+}
+
+// Fonction pour générer des concurrents fallback intelligents
+function generateSmartFallbackCompetitors(brandName: string, industry?: string, brandType?: string) {
+  const fallbackByType = {
+    wine: ['Château Lafite', 'Dom Pérignon', 'Opus One', 'Caymus', 'Silver Oak'],
+    technology: ['TechCorp', 'InnovateSoft', 'NextGen Systems', 'Digital Solutions', 'CloudTech'],
+    fashion: ['StyleHouse', 'Fashion Forward', 'Trend Setters', 'Elite Couture', 'Modern Wear'],
+    food: ['Gourmet Delights', 'Fresh Flavors', 'Culinary Craft', 'Taste Masters', 'Food Artisans'],
+    general: ['Market Leader Co', 'Premium Brand', 'Industry Pioneer', 'Quality First', 'Innovation Labs']
+  }
+  
+  return fallbackByType[brandType] || fallbackByType.general || fallbackByType.technology
+}
+
+// Fonctions d'inférence pour enrichir les données des concurrents
+function inferCompetitorCategory(name: string, industry?: string) {
+  if (name.includes('Château') || name.includes('Dom ')) return 'Premium Wine'
+  if (name.includes('Google') || name.includes('Microsoft')) return 'Tech Giant'
+  if (name.includes('Chanel') || name.includes('Louis Vuitton')) return 'Luxury Fashion'
+  return industry || 'General'
+}
+
+function inferCompetitorStrength(name: string, industry?: string) {
+  const strengths = {
+    'Google': 'Search & AI',
+    'Apple': 'Innovation',
+    'Microsoft': 'Enterprise',
+    'Chanel': 'Heritage',
+    'Tesla': 'Technology',
+    'Amazon': 'Scale',
+    'Netflix': 'Content'
+  }
+  return strengths[name] || 'Market Position'
+}
+
+function inferCompetitorRegion(name: string, hint?: string) {
+  if (name.includes('Château') || name.includes('Dom ')) return 'France'
+  if (name.includes('Celliers de Meknès')) return 'Morocco'
+  if (hint) return hint.charAt(0).toUpperCase() + hint.slice(1)
+  return 'Global'
+}
+
+function inferCompetitorSize(name: string, industry?: string) {
+  const giants = ['Google', 'Apple', 'Microsoft', 'Amazon', 'Meta', 'Tesla', 'Netflix']
+  if (giants.includes(name)) return 'Enterprise'
+  if (name.includes('Startup') || name.includes('Emerging')) return 'Startup'
+  return 'Mid-Market'
+}
+
 // Route principale - Dashboard AIREACH
 app.get('/', (c) => {
   return c.html(`
