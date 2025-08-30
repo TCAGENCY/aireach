@@ -539,6 +539,192 @@ app.post('/api/projects/create-complete', async (c) => {
   }
 })
 
+// ===== API ROUTES POUR LA GESTION DES QUESTIONS/PROMPTS =====
+
+// Récupérer les questions d'un projet
+app.get('/api/projects/:id/questions', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+    
+    const questions = await env.DB.prepare(`
+      SELECT 
+        id,
+        query_text as question,
+        query_type as category,
+        priority,
+        is_active,
+        search_volume,
+        description,
+        created_at,
+        updated_at
+      FROM tracked_queries 
+      WHERE project_id = ?
+      ORDER BY priority ASC, created_at DESC
+    `).bind(projectId).all()
+
+    return c.json({
+      success: true,
+      data: questions.results || []
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to fetch questions' 
+    }, 500)
+  }
+})
+
+// Ajouter une nouvelle question à un projet
+app.post('/api/projects/:id/questions', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+    const body = await c.req.json()
+    
+    const { question, category = 'Général', description = '' } = body
+    
+    if (!question) {
+      return c.json({ 
+        success: false, 
+        error: 'Question is required' 
+      }, 400)
+    }
+
+    // Générer un volume de recherche simulé basé sur la catégorie
+    const getSearchVolumeByCategory = (cat) => {
+      const volumes = {
+        'Général': Math.floor(Math.random() * 1000) + 500,
+        'Produits': Math.floor(Math.random() * 800) + 300,
+        'Services': Math.floor(Math.random() * 600) + 200,
+        'Comparaison': Math.floor(Math.random() * 1500) + 800,
+        'Prix': Math.floor(Math.random() * 2000) + 1000,
+        'Avis': Math.floor(Math.random() * 1200) + 600
+      }
+      return volumes[cat] || Math.floor(Math.random() * 500) + 100
+    }
+
+    const result = await env.DB.prepare(`
+      INSERT INTO tracked_queries (
+        project_id, 
+        query_text, 
+        query_type, 
+        description,
+        search_volume,
+        priority, 
+        is_active,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      projectId,
+      question,
+      category,
+      description,
+      getSearchVolumeByCategory(category),
+      2, // Priorité normale par défaut
+      true
+    ).run()
+
+    const newQuestion = await env.DB.prepare(`
+      SELECT 
+        id,
+        query_text as question,
+        query_type as category,
+        priority,
+        is_active,
+        search_volume,
+        description,
+        created_at,
+        updated_at
+      FROM tracked_queries 
+      WHERE id = ?
+    `).bind(result.meta.last_row_id).first()
+
+    return c.json({
+      success: true,
+      data: newQuestion
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to add question' 
+    }, 500)
+  }
+})
+
+// Supprimer une question
+app.delete('/api/projects/:id/questions/:questionId', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+    const questionId = parseInt(c.req.param('questionId'))
+    
+    const result = await env.DB.prepare(`
+      DELETE FROM tracked_queries 
+      WHERE id = ? AND project_id = ?
+    `).bind(questionId, projectId).run()
+
+    if (result.meta.changes === 0) {
+      return c.json({ 
+        success: false, 
+        error: 'Question not found' 
+      }, 404)
+    }
+
+    return c.json({
+      success: true,
+      message: 'Question supprimée avec succès'
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to delete question' 
+    }, 500)
+  }
+})
+
+// Basculer le statut actif/inactif d'une question
+app.patch('/api/projects/:id/questions/:questionId/toggle', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+    const questionId = parseInt(c.req.param('questionId'))
+    
+    // D'abord récupérer le statut actuel
+    const current = await env.DB.prepare(`
+      SELECT is_active FROM tracked_queries 
+      WHERE id = ? AND project_id = ?
+    `).bind(questionId, projectId).first()
+
+    if (!current) {
+      return c.json({ 
+        success: false, 
+        error: 'Question not found' 
+      }, 404)
+    }
+
+    // Basculer le statut
+    const newStatus = !current.is_active
+    
+    await env.DB.prepare(`
+      UPDATE tracked_queries 
+      SET is_active = ?, updated_at = datetime('now')
+      WHERE id = ? AND project_id = ?
+    `).bind(newStatus, questionId, projectId).run()
+
+    return c.json({
+      success: true,
+      data: { is_active: newStatus },
+      message: `Question ${newStatus ? 'activée' : 'désactivée'} avec succès`
+    })
+  } catch (error) {
+    return c.json({ 
+      success: false, 
+      error: 'Failed to toggle question status' 
+    }, 500)
+  }
+})
+
 // Route principale - Dashboard AIREACH
 app.get('/', (c) => {
   return c.html(`
@@ -585,14 +771,14 @@ app.get('/', (c) => {
             <!-- Navigation -->
             <nav class="flex-1 overflow-y-auto p-4">
                 <!-- Section Projets -->
-                <div class="mb-6">
+                <div class="mb-8">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Projets</h3>
-                        <button id="newProjectBtn" class="text-aireach-blue hover:text-aireach-purple text-sm">
-                            <i class="fas fa-plus"></i>
+                        <button id="newProjectBtn" class="text-aireach-blue hover:text-aireach-purple text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-blue-50 transition-colors">
+                            <i class="fas fa-plus text-xs"></i>
                         </button>
                     </div>
-                    <div id="projectsList" class="space-y-2">
+                    <div id="projectsList" class="space-y-1">
                         <!-- Projects will be loaded here -->
                     </div>
                 </div>
@@ -600,29 +786,29 @@ app.get('/', (c) => {
                 <!-- Section Tools -->
                 <div class="mb-6">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tools</h3>
-                    <div class="space-y-2">
-                        <a href="#" class="nav-item flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100" data-section="all-projects">
-                            <i class="fas fa-folder-open w-5 h-5 mr-3"></i>
+                    <div class="space-y-1">
+                        <a href="#" class="nav-item flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100" data-section="all-projects">
+                            <i class="fas fa-folder-open w-4 h-4 mr-3"></i>
                             <span>All Projects</span>
                         </a>
-                        <a href="#" class="nav-item flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100" data-section="prompts">
-                            <i class="fas fa-question-circle w-5 h-5 mr-3"></i>
+                        <a href="#" class="nav-item flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100" data-section="prompts">
+                            <i class="fas fa-question-circle w-4 h-4 mr-3"></i>
                             <span>Prompts / Questions</span>
                         </a>
-                        <a href="#" class="nav-item flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100" data-section="subscription">
-                            <i class="fas fa-crown w-5 h-5 mr-3"></i>
+                        <a href="#" class="nav-item flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100" data-section="subscription">
+                            <i class="fas fa-crown w-4 h-4 mr-3"></i>
                             <span>Subscription</span>
                         </a>
-                        <a href="#" class="nav-item flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100" data-section="faq">
-                            <i class="fas fa-info-circle w-5 h-5 mr-3"></i>
+                        <a href="#" class="nav-item flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100" data-section="faq">
+                            <i class="fas fa-info-circle w-4 h-4 mr-3"></i>
                             <span>FAQ</span>
                         </a>
-                        <a href="#" class="nav-item flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100" data-section="improve-ranking">
-                            <i class="fas fa-chart-line w-5 h-5 mr-3"></i>
+                        <a href="#" class="nav-item flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100" data-section="improve-ranking">
+                            <i class="fas fa-chart-line w-4 h-4 mr-3"></i>
                             <span>Improve AI Ranking</span>
                         </a>
-                        <a href="#" class="nav-item flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100" data-section="tutorials">
-                            <i class="fas fa-video w-5 h-5 mr-3"></i>
+                        <a href="#" class="nav-item flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100" data-section="tutorials">
+                            <i class="fas fa-video w-4 h-4 mr-3"></i>
                             <span>Video Tutorial</span>
                         </a>
                     </div>

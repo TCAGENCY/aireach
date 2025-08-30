@@ -4,6 +4,7 @@ class AIReachApp {
     this.currentProject = null;
     this.currentSection = 'dashboard';
     this.projects = [];
+    this.expandedProject = null; // Pour gérer l'expansion du sous-menu
     this.init();
   }
 
@@ -11,7 +12,10 @@ class AIReachApp {
     console.log('🚀 AIREACH Application Starting...');
     this.setupEventListeners();
     this.loadProjects();
-    this.showDashboard();
+    // Afficher la page Suggested Prompts de Nicolas au démarrage
+    setTimeout(() => {
+      this.showNicolasSuggestedPrompts();
+    }, 500); // Petit délai pour laisser le temps aux projets de se charger
   }
 
   setupEventListeners() {
@@ -65,13 +69,57 @@ class AIReachApp {
       const response = await axios.get('/api/projects');
       if (response.data.success) {
         this.projects = response.data.data;
-        this.renderProjectsList();
-        console.log(`📊 Loaded ${this.projects.length} projects`);
+        
+        // Si aucun projet, ajouter des données de démonstration
+        if (this.projects.length === 0) {
+          this.loadDemoData();
+        } else {
+          this.renderProjectsList();
+          console.log(`📊 Loaded ${this.projects.length} projects`);
+        }
       }
     } catch (error) {
       console.error('❌ Failed to load projects:', error);
-      this.showError('Impossible de charger les projets');
+      // En cas d'erreur, charger les données de démonstration
+      this.loadDemoData();
     }
+  }
+
+  loadDemoData() {
+    // Données de démonstration avec le projet Nicolas
+    this.projects = [
+      {
+        id: 1,
+        name: 'Nicolas Monitoring',
+        brand_name: 'Nicolas',
+        description: 'Surveillance IA pour Nicolas dans le secteur Wine',
+        industry: 'Wine',
+        website_url: 'https://www.nicolas.com',
+        status: 'active',
+        total_queries: 12,
+        total_responses: 45,
+        avg_position: 2.3,
+        avg_sentiment_score: 0.78,
+        created_at: '2024-01-15T10:30:00Z'
+      },
+      {
+        id: 2,
+        name: 'TechCorp Monitoring',
+        brand_name: 'TechCorp',
+        description: 'Surveillance IA pour TechCorp dans le secteur Technology',
+        industry: 'Technology',
+        website_url: 'https://www.techcorp.com',
+        status: 'active',
+        total_queries: 8,
+        total_responses: 32,
+        avg_position: 3.1,
+        avg_sentiment_score: 0.65,
+        created_at: '2024-01-10T14:20:00Z'
+      }
+    ];
+    
+    this.renderProjectsList();
+    console.log('📊 Loaded demo data with Nicolas project');
   }
 
   renderProjectsList() {
@@ -79,7 +127,7 @@ class AIReachApp {
     
     if (this.projects.length === 0) {
       projectsList.innerHTML = `
-        <div class="text-center py-4">
+        <div class="text-center py-3">
           <p class="text-sm text-gray-500">Aucun projet</p>
           <p class="text-xs text-gray-400 mt-1">Cliquez sur + pour commencer</p>
         </div>
@@ -88,35 +136,89 @@ class AIReachApp {
     }
 
     projectsList.innerHTML = this.projects.map(project => `
-      <div class="project-item p-3 rounded-lg cursor-pointer ${this.currentProject?.id === project.id ? 'active' : ''}" 
-           data-project-id="${project.id}">
-        <div class="flex items-center justify-between mb-2">
-          <h4 class="font-medium text-gray-900 truncate">${project.name}</h4>
-          <span class="status-${project.status} px-2 py-1 rounded-full text-xs font-medium">
-            ${this.getStatusLabel(project.status)}
-          </span>
-        </div>
-        <p class="text-sm text-gray-600 truncate mb-2">${project.brand_name}</p>
-        <div class="flex items-center justify-between text-xs text-gray-500">
-          <span>${project.total_queries || 0} questions</span>
-          <span>${project.total_responses || 0} réponses</span>
-        </div>
-        ${project.avg_position ? `
-          <div class="flex items-center mt-2 text-xs">
-            <span class="text-gray-500">Position moy:</span>
-            <span class="ml-1 font-medium ${project.avg_position <= 2 ? 'text-green-600' : project.avg_position <= 4 ? 'text-yellow-600' : 'text-red-600'}">
-              #${Math.round(project.avg_position)}
-            </span>
+      <div class="project-group">
+        <!-- Élément principal du projet -->
+        <div class="project-item flex items-center p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors ${this.expandedProject === project.id ? 'bg-gray-50' : 'text-gray-700'}" 
+             data-project-id="${project.id}"
+             title="${project.brand_name} - ${project.total_queries || 0} questions, ${project.total_responses || 0} réponses">
+          <!-- Icône de projet -->
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 bg-gradient-to-br from-aireach-blue to-aireach-purple">
+            <span class="text-white font-medium text-xs">${project.brand_name.charAt(0)}</span>
           </div>
-        ` : ''}
+          
+          <!-- Contenu du projet -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <h4 class="font-medium truncate text-sm">${project.brand_name}</h4>
+              <div class="flex items-center space-x-2 ml-2 flex-shrink-0">
+                <!-- Indicateur de statut -->
+                <div class="w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-green-400' : project.status === 'paused' ? 'bg-yellow-400' : 'bg-gray-400'}"></div>
+                <!-- Position moyenne si disponible -->
+                ${project.avg_position ? `
+                  <span class="text-xs font-medium ${project.avg_position <= 2 ? 'text-green-600' : project.avg_position <= 4 ? 'text-yellow-600' : 'text-red-600'}">
+                    #${Math.round(project.avg_position)}
+                  </span>
+                ` : ''}
+                <!-- Flèche d'expansion -->
+                <i class="fas fa-chevron-right text-xs text-gray-400 transition-transform ${this.expandedProject === project.id ? 'rotate-90' : ''} expand-arrow" data-project-id="${project.id}"></i>
+              </div>
+            </div>
+            <p class="text-xs truncate text-gray-500">
+              ${project.total_queries || 0} questions
+            </p>
+          </div>
+        </div>
+        
+        <!-- Sous-menu -->
+        <div class="submenu ${this.expandedProject === project.id ? '' : 'hidden'} ml-11 mt-1 space-y-1" data-project-id="${project.id}">
+          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100 transition-colors ${this.currentSection === 'project-overview' && this.currentProject?.id === project.id ? 'bg-aireach-blue text-white' : ''}" 
+             data-action="overview" data-project-id="${project.id}">
+            <i class="fas fa-chart-pie w-3 h-3 mr-2"></i>
+            <span>Overview</span>
+          </a>
+          <a href="#" class="submenu-item flex items-center px-3 py-2 text-xs text-gray-600 rounded hover:bg-gray-100 transition-colors ${this.currentSection === 'suggested-prompts' && this.currentProject?.id === project.id ? 'bg-aireach-blue text-white' : ''}" 
+             data-action="suggested-prompts" data-project-id="${project.id}">
+            <i class="fas fa-lightbulb w-3 h-3 mr-2"></i>
+            <span>Suggested prompts</span>
+          </a>
+        </div>
       </div>
     `).join('');
 
     // Add click listeners to project items
     document.querySelectorAll('.project-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
         const projectId = parseInt(item.getAttribute('data-project-id'));
-        this.selectProject(projectId);
+        
+        // Toggle l'expansion du projet
+        if (this.expandedProject === projectId) {
+          this.expandedProject = null;
+        } else {
+          this.expandedProject = projectId;
+        }
+        
+        this.renderProjectsList();
+      });
+    });
+    
+    // Add click listeners to submenu items
+    document.querySelectorAll('.submenu-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const projectId = parseInt(item.getAttribute('data-project-id'));
+        const action = item.getAttribute('data-action');
+        
+        this.currentProject = this.projects.find(p => p.id === projectId);
+        
+        if (action === 'overview') {
+          this.showProjectOverview();
+        } else if (action === 'suggested-prompts') {
+          this.showSuggestedPrompts();
+        }
+        
+        this.renderProjectsList(); // Re-render pour mettre à jour les états actifs
       });
     });
   }
@@ -1489,6 +1591,434 @@ class AIReachApp {
         modal.remove();
       }
     });
+  }
+
+  // Nouvelle méthode pour afficher l'overview du projet
+  showProjectOverview() {
+    this.currentSection = 'project-overview';
+    this.updatePageHeader(`Overview - ${this.currentProject.brand_name}`, `Vue détaillée du projet ${this.currentProject.name}`);
+    
+    const content = `
+      <div class="fade-in">
+        <!-- Statistiques du projet -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-question-circle text-blue-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Questions Suivies</p>
+                <p class="text-2xl font-bold text-gray-900">${this.currentProject.total_queries || 0}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-comments text-green-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Réponses Collectées</p>
+                <p class="text-2xl font-bold text-gray-900">${this.currentProject.total_responses || 0}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-trophy text-purple-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Position Moyenne</p>
+                <p class="text-2xl font-bold text-gray-900">#${this.currentProject.avg_position ? Math.round(this.currentProject.avg_position) : '-'}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-card bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-chart-line text-yellow-600"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">Score Sentiment</p>
+                <p class="text-2xl font-bold text-gray-900">${this.currentProject.avg_sentiment_score ? Math.round(this.currentProject.avg_sentiment_score * 100) : '-'}%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informations du projet -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Informations du Projet</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Détails</h4>
+              <div class="space-y-2 text-sm text-gray-600">
+                <p><strong>Nom:</strong> ${this.currentProject.name}</p>
+                <p><strong>Marque:</strong> ${this.currentProject.brand_name}</p>
+                <p><strong>Secteur:</strong> ${this.currentProject.industry || 'Non spécifié'}</p>
+                <p><strong>Status:</strong> <span class="status-${this.currentProject.status} px-2 py-1 rounded-full text-xs font-medium">${this.getStatusLabel(this.currentProject.status)}</span></p>
+                ${this.currentProject.website_url ? `<p><strong>Site web:</strong> <a href="${this.currentProject.website_url}" target="_blank" class="text-aireach-blue hover:underline">${this.currentProject.website_url}</a></p>` : ''}
+              </div>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-gray-700 mb-2">Description</h4>
+              <p class="text-sm text-gray-600">${this.currentProject.description || 'Aucune description disponible'}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
+          <div class="flex flex-wrap gap-3">
+            <button class="action-btn bg-aireach-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
+              <i class="fas fa-play mr-2"></i>
+              Lancer Collection
+            </button>
+            <button class="action-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center">
+              <i class="fas fa-download mr-2"></i>
+              Exporter Données
+            </button>
+            <button class="action-btn bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center">
+              <i class="fas fa-cog mr-2"></i>
+              Paramètres
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('mainContent').innerHTML = content;
+    console.log(`📊 Showing overview for project: ${this.currentProject.name}`);
+  }
+
+  // Nouvelle méthode pour afficher les prompts suggérés
+  showSuggestedPrompts() {
+    this.currentSection = 'suggested-prompts';
+    this.updatePageHeader(`Suggested Prompts - ${this.currentProject.brand_name}`, `Questions suggérées pour ${this.currentProject.name}`);
+    
+    // Récupérer les prompts suggérés pour ce projet
+    this.loadSuggestedPrompts();
+  }
+
+  async loadSuggestedPrompts() {
+    try {
+      const response = await axios.get(`/api/projects/${this.currentProject.id}/questions`);
+      
+      if (response.data.success) {
+        this.renderSuggestedPrompts(response.data.data);
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Failed to load suggested prompts:', error);
+      this.showError('Impossible de charger les prompts suggérés');
+    }
+  }
+
+  renderSuggestedPrompts(prompts) {
+    const content = `
+      <div class="fade-in">
+        <!-- Header avec bouton d'ajout -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Questions Suggérées</h3>
+              <p class="text-sm text-gray-600">Gérez les questions à suivre pour ${this.currentProject.brand_name}</p>
+            </div>
+            <button id="addNewPrompt" class="bg-aireach-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
+              <i class="fas fa-plus mr-2"></i>
+              Ajouter Question
+            </button>
+          </div>
+        </div>
+
+        <!-- Liste des prompts -->
+        <div class="space-y-4">
+          ${prompts.length === 0 ? `
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+              <i class="fas fa-lightbulb text-4xl text-gray-300 mb-4"></i>
+              <h3 class="text-lg font-semibold text-gray-900 mb-2">Aucune question suggérée</h3>
+              <p class="text-gray-500 mb-4">Commencez par ajouter des questions à suivre pour ce projet</p>
+              <button id="addFirstPrompt" class="bg-aireach-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                Ajouter la première question
+              </button>
+            </div>
+          ` : prompts.map(prompt => `
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 prompt-card" data-prompt-id="${prompt.id}">
+              <div class="flex items-start justify-between">
+                <div class="flex-1">
+                  <div class="flex items-center mb-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-3">
+                      ${prompt.category || 'Général'}
+                    </span>
+                    <span class="text-xs text-gray-500">Vol. recherche: ${prompt.search_volume || 'N/A'}</span>
+                  </div>
+                  <h4 class="font-medium text-gray-900 mb-2">${prompt.question}</h4>
+                  <p class="text-sm text-gray-600 mb-3">${prompt.description || 'Aucune description'}</p>
+                  <div class="flex items-center space-x-4 text-xs text-gray-500">
+                    <span><i class="fas fa-eye mr-1"></i>Suivi: ${prompt.is_active ? 'Actif' : 'Inactif'}</span>
+                    <span><i class="fas fa-calendar mr-1"></i>Ajouté: ${new Date(prompt.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2 ml-4">
+                  <button class="text-blue-600 hover:text-blue-800 p-2" onclick="app.editPrompt(${prompt.id})" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="text-gray-600 hover:text-gray-800 p-2" onclick="app.togglePromptStatus(${prompt.id})" title="${prompt.is_active ? 'Désactiver' : 'Activer'}">
+                    <i class="fas fa-${prompt.is_active ? 'pause' : 'play'}"></i>
+                  </button>
+                  <button class="text-red-600 hover:text-red-800 p-2" onclick="app.deletePrompt(${prompt.id})" title="Supprimer">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    document.getElementById('mainContent').innerHTML = content;
+
+    // Event listeners
+    const addButtons = document.querySelectorAll('#addNewPrompt, #addFirstPrompt');
+    addButtons.forEach(btn => {
+      btn.addEventListener('click', () => this.showAddPromptModal());
+    });
+
+    console.log(`💡 Showing ${prompts.length} suggested prompts for project: ${this.currentProject.name}`);
+  }
+
+  showAddPromptModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50';
+    modal.innerHTML = `
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-gray-900">Ajouter une Question</h3>
+              <button id="closeAddPromptModal" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <form id="addPromptForm" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Question</label>
+                <textarea id="newPromptQuestion" required rows="3" placeholder="Ex: Quels sont les avantages de [marque] par rapport à la concurrence ?" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                <select id="newPromptCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent">
+                  <option value="Général">Général</option>
+                  <option value="Produits">Produits</option>
+                  <option value="Services">Services</option>
+                  <option value="Comparaison">Comparaison</option>
+                  <option value="Prix">Prix</option>
+                  <option value="Avis">Avis</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optionnel)</label>
+                <input type="text" id="newPromptDescription" placeholder="Description de l'objectif de cette question" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aireach-blue focus:border-transparent">
+              </div>
+              <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" id="cancelAddPrompt" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Annuler
+                </button>
+                <button type="submit" class="px-4 py-2 bg-aireach-blue text-white rounded-lg hover:bg-blue-700">
+                  Ajouter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Event listeners
+    document.getElementById('closeAddPromptModal').addEventListener('click', () => modal.remove());
+    document.getElementById('cancelAddPrompt').addEventListener('click', () => modal.remove());
+    
+    document.getElementById('addPromptForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = {
+        question: document.getElementById('newPromptQuestion').value,
+        category: document.getElementById('newPromptCategory').value,
+        description: document.getElementById('newPromptDescription').value
+      };
+
+      try {
+        const response = await axios.post(`/api/projects/${this.currentProject.id}/questions`, formData);
+        
+        if (response.data.success) {
+          this.showSuccess('Question ajoutée avec succès !');
+          modal.remove();
+          this.loadSuggestedPrompts(); // Recharger la liste
+        } else {
+          throw new Error(response.data.error);
+        }
+      } catch (error) {
+        console.error('Failed to add prompt:', error);
+        this.showError('Impossible d\'ajouter la question');
+      }
+    });
+
+    // Fermer en cliquant sur l'overlay
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  }
+
+  async deletePrompt(promptId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette question ?')) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`/api/projects/${this.currentProject.id}/questions/${promptId}`);
+      
+      if (response.data.success) {
+        this.showSuccess('Question supprimée avec succès !');
+        this.loadSuggestedPrompts(); // Recharger la liste
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Failed to delete prompt:', error);
+      this.showError('Impossible de supprimer la question');
+    }
+  }
+
+  async togglePromptStatus(promptId) {
+    try {
+      const response = await axios.patch(`/api/projects/${this.currentProject.id}/questions/${promptId}/toggle`);
+      
+      if (response.data.success) {
+        this.showSuccess('Statut de la question mis à jour !');
+        this.loadSuggestedPrompts(); // Recharger la liste
+      } else {
+        throw new Error(response.data.error);
+      }
+    } catch (error) {
+      console.error('Failed to toggle prompt status:', error);
+      this.showError('Impossible de mettre à jour le statut');
+    }
+  }
+
+  getStatusLabel(status) {
+    switch(status) {
+      case 'active': return 'Actif';
+      case 'paused': return 'En pause';
+      case 'completed': return 'Terminé';
+      default: return 'Inconnu';
+    }
+  }
+
+  // Méthode pour afficher directement la page Suggested Prompts de Nicolas
+  showNicolasSuggestedPrompts() {
+    // Sélectionner le projet Nicolas
+    this.currentProject = this.projects.find(p => p.brand_name === 'Nicolas') || this.projects[0];
+    this.currentSection = 'suggested-prompts';
+    this.expandedProject = this.currentProject.id;
+    
+    this.updatePageHeader(`Suggested Prompts - ${this.currentProject.brand_name}`, `Questions suggérées pour ${this.currentProject.name}`);
+    
+    // Données d'exemple pour Nicolas (vins)
+    const nicolasPrompts = [
+      {
+        id: 1,
+        question: "Quels sont les meilleurs vins de Nicolas pour les occasions spéciales ?",
+        category: "Produits",
+        description: "Questions sur la sélection premium de vins Nicolas",
+        search_volume: 1250,
+        is_active: true,
+        created_at: '2024-01-15T10:30:00Z'
+      },
+      {
+        id: 2,
+        question: "Comment Nicolas compare-t-il ses prix avec d'autres cavistes ?",
+        category: "Prix",
+        description: "Comparaison tarifaire avec la concurrence",
+        search_volume: 890,
+        is_active: true,
+        created_at: '2024-01-16T11:15:00Z'
+      },
+      {
+        id: 3,
+        question: "Quelle est la qualité du service client chez Nicolas ?",
+        category: "Services",
+        description: "Évaluation du service client et conseil",
+        search_volume: 650,
+        is_active: true,
+        created_at: '2024-01-17T09:45:00Z'
+      },
+      {
+        id: 4,
+        question: "Nicolas propose-t-il des cours de dégustation de vin ?",
+        category: "Services",
+        description: "Offres de formation et dégustation",
+        search_volume: 420,
+        is_active: false,
+        created_at: '2024-01-18T14:20:00Z'
+      },
+      {
+        id: 5,
+        question: "Où trouver les magasins Nicolas près de chez moi ?",
+        category: "Général",
+        description: "Localisation des points de vente",
+        search_volume: 2100,
+        is_active: true,
+        created_at: '2024-01-19T16:30:00Z'
+      },
+      {
+        id: 6,
+        question: "Nicolas vs Lavinia : quel caviste choisir ?",
+        category: "Comparaison",
+        description: "Comparaison avec le concurrent Lavinia",
+        search_volume: 780,
+        is_active: true,
+        created_at: '2024-01-20T08:10:00Z'
+      },
+      {
+        id: 7,
+        question: "Quels sont les avis clients sur l'e-commerce Nicolas ?",
+        category: "Avis",
+        description: "Retours d'expérience sur la boutique en ligne",
+        search_volume: 340,
+        is_active: false,
+        created_at: '2024-01-21T12:45:00Z'
+      },
+      {
+        id: 8,
+        question: "Les vins biologiques chez Nicolas sont-ils authentiques ?",
+        category: "Produits",
+        description: "Questions sur la certification bio des vins",
+        search_volume: 520,
+        is_active: true,
+        created_at: '2024-01-22T10:55:00Z'
+      }
+    ];
+
+    this.renderSuggestedPrompts(nicolasPrompts);
+    this.renderProjectsList(); // Met à jour la sidebar pour montrer l'état actif
   }
 }
 

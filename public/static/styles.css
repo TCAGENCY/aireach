@@ -30,20 +30,21 @@
   border-left: 3px solid #1e40af;
 }
 
-/* Project item styles */
+/* Project item styles - Compact version */
 .project-item {
-  border: 1px solid #e5e7eb;
   transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
 }
 
-.project-item:hover {
-  border-color: #1e40af;
-  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.1);
+.project-item:hover:not(.active) {
+  background-color: #f3f4f6;
 }
 
-.project-item.active {
-  border-color: #1e40af;
-  background-color: #eff6ff;
+/* Active project item */
+.project-item.bg-aireach-blue {
+  background-color: #1e40af !important;
+  color: white;
+  border: 1px solid #1e40af;
 }
 
 /* Cards and metrics */
@@ -217,4 +218,63 @@ select:focus {
 
 .btn-primary:hover {
   background: linear-gradient(135deg, #1e40af 0%, #8b5cf6 100%);
+}
+
+/* Styles pour le sous-menu des projets */
+.submenu {
+  background-color: #f8fafc;
+  border-left: 2px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.submenu-item {
+  transition: all 0.2s ease-in-out;
+  font-size: 12px;
+}
+
+.submenu-item:hover {
+  background-color: #e2e8f0 !important;
+  color: #374151 !important;
+}
+
+.submenu-item.bg-aireach-blue {
+  background-color: #1e40af !important;
+  color: white !important;
+}
+
+.submenu-item.bg-aireach-blue:hover {
+  background-color: #1e3a8a !important;
+}
+
+/* Animation de rotation pour les flèches */
+.expand-arrow {
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Styles pour les cartes de prompts */
+.prompt-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.prompt-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Animation d'apparition pour les sous-menus */
+.submenu:not(.hidden) {
+  animation: slideDown 0.2s ease-in-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 100px;
+  }
 }
