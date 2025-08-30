@@ -958,11 +958,11 @@ app.patch('/api/projects/:id/questions/:questionId/toggle', async (c) => {
   }
 })
 
-// API pour identifier les concurrents d'une marque
+// API pour identifier les concurrents d'une marque avec service intelligent
 app.post('/api/competitors/identify', async (c) => {
   try {
     const body = await c.req.json()
-    const { brandName, industry, websiteUrl, description, country } = body
+    const { brandName, industry, websiteUrl, description, projectId } = body
 
     if (!brandName) {
       return c.json({
@@ -971,19 +971,63 @@ app.post('/api/competitors/identify', async (c) => {
       }, 400)
     }
 
-    // Service d'identification des concurrents
-    const competitors = await identifyCompetitors(brandName, industry, websiteUrl, description, country)
+    console.log(`🔍 Identifying competitors for: ${brandName} in ${industry || 'unknown industry'}`)
+
+    // Utiliser notre service d'identification intelligent
+    const { CompetitorIdentificationService } = await import('./services/competitor-identification')
+    
+    const identificationResult = await CompetitorIdentificationService.identifyCompetitors(
+      brandName, 
+      websiteUrl || '', 
+      industry || 'Other', 
+      description
+    )
+
+    // Optionnel: Sauvegarder en base de données si projectId fourni
+    if (projectId && c.env?.DB) {
+      try {
+        // Sauvegarder les concurrents identifiés en base
+        for (const competitor of identificationResult.competitors) {
+          await c.env.DB.prepare(`
+            INSERT OR REPLACE INTO competitors (
+              project_id, name, domain, industry, description, confidence_score,
+              identification_method, brand_score, avg_position, share_of_voice,
+              total_mentions, trend, position_trend, market_strength, key_strength,
+              threat_level, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            projectId,
+            competitor.name,
+            competitor.domain || null,
+            competitor.industry,
+            competitor.description,
+            competitor.confidence_score,
+            competitor.identification_method,
+            competitor.brand_score,
+            competitor.avg_position,
+            competitor.share_of_voice,
+            competitor.total_mentions,
+            competitor.trend,
+            competitor.position_trend,
+            competitor.market_strength,
+            competitor.key_strength,
+            competitor.threat_level,
+            competitor.status || 'active'
+          ).run()
+        }
+        console.log(`💾 Saved ${identificationResult.competitors.length} competitors to database`)
+      } catch (dbError) {
+        console.warn('⚠️ Could not save competitors to database:', dbError)
+      }
+    }
     
     return c.json({
       success: true,
       data: {
         brandName,
         industry,
-        competitors,
-        analysisMethod: competitors.method,
-        confidence: competitors.confidence,
-        sources: competitors.sources,
-        analysis: competitors.analysis
+        ...identificationResult,
+        message: `${identificationResult.total_found} concurrents identifiés avec une confiance moyenne de ${Math.round(identificationResult.confidence_average * 100)}%`
       }
     })
   } catch (error) {
@@ -991,6 +1035,80 @@ app.post('/api/competitors/identify', async (c) => {
     return c.json({
       success: false,
       error: 'Erreur lors de l\'identification des concurrents'
+    }, 500)
+  }
+})
+
+// API pour récupérer les concurrents d'un projet depuis la DB
+app.get('/api/projects/:id/competitors', async (c) => {
+  try {
+    const { env } = c
+    const projectId = parseInt(c.req.param('id'))
+
+    if (!projectId) {
+      return c.json({
+        success: false,
+        error: 'ID de projet requis'
+      }, 400)
+    }
+
+    // Si pas de DB, utiliser des données de démonstration
+    if (!env.DB) {
+      console.log('⚠️ DB not available, using demo competitors data')
+      const { CompetitorIdentificationService } = await import('./services/competitor-identification')
+      
+      // Simuler des données pour le projet
+      const demoResult = await CompetitorIdentificationService.identifyCompetitors(
+        'Demo Brand', 
+        'demo.com', 
+        'Technology', 
+        'Demo project for competitor analysis'
+      )
+      
+      return c.json({
+        success: true,
+        data: {
+          project_id: projectId,
+          competitors: demoResult.competitors,
+          market_analysis: demoResult.market_analysis,
+          total_found: demoResult.total_found,
+          confidence_average: demoResult.confidence_average,
+          last_updated: new Date().toISOString()
+        }
+      })
+    }
+
+    // Récupérer les concurrents depuis la base de données
+    const competitors = await env.DB.prepare(`
+      SELECT * FROM competitors 
+      WHERE project_id = ? AND status = 'active' 
+      ORDER BY confidence_score DESC, brand_score DESC
+    `).bind(projectId).all()
+
+    // Récupérer les insights associés
+    const insights = await env.DB.prepare(`
+      SELECT * FROM competitive_insights 
+      WHERE project_id = ? AND status IN ('new', 'reviewed')
+      ORDER BY priority ASC, created_at DESC
+      LIMIT 10
+    `).bind(projectId).all()
+
+    return c.json({
+      success: true,
+      data: {
+        project_id: projectId,
+        competitors: competitors.results || [],
+        insights: insights.results || [],
+        total_found: competitors.results?.length || 0,
+        last_updated: competitors.results?.[0]?.updated_at || new Date().toISOString()
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Error fetching project competitors:', error)
+    return c.json({
+      success: false,
+      error: 'Erreur lors de la récupération des concurrents'
     }, 500)
   }
 })
